@@ -1,0 +1,29 @@
+name: Calculus CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cài đặt uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Thiết lập Python
+        run: uv python install 3.13
+
+      - name: Cài đặt dependencies
+        run: uv sync
+
+      - name: Chạy Pytest
+        run: uv run pytest
