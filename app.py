@@ -81,7 +81,7 @@ with col_view:
             ax.spines["bottom"].set_linewidth(1.2)
 
             # Hàm toán học
-            x_sym = sp.Symbol("x")
+            x_sym = engine.var
             f_expr = engine._parse_expression(f_str)
             g_expr = engine._parse_expression(g_str)
             f_num = sp.lambdify(x_sym, f_expr, "numpy")
@@ -154,8 +154,8 @@ with col_view:
             # Vẽ đường nét đứt dóng tọa độ từ các điểm mốc
             unique_pts = sorted(list(set(all_x)))
             for pt in unique_pts:
-                f_val = float(f_expr.subs(x_sym, pt).evalf())
-                g_val = float(g_expr.subs(x_sym, pt).evalf())
+                f_val = float(np.asarray(f_num(pt)).item())
+                g_val = float(np.asarray(g_num(pt)).item())
                 target_y = f_val if abs(f_val) > abs(g_val) else g_val
 
                 # Đường dóng xuống Ox
