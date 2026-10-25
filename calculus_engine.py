@@ -321,9 +321,8 @@ class CalculusGeometryEngine:
         f_tikz = str(f).replace(str(self.var), r"\x").replace("**", "^")
         g_tikz = str(g).replace(str(self.var), r"\x").replace("**", "^")
 
-        # Thu thập các mốc phân hoạch
         all_pts_num: List[float] = []
-        exact_pts: List[Tuple[float, str, float]] = []  # (x_num, latex_str, y_val)
+        exact_pts: List[Tuple[float, str, float]] = []
 
         if exact_intervals and len(exact_intervals) > 0:
             seen = set()
@@ -349,21 +348,17 @@ class CalculusGeometryEngine:
         x_min = x_min_data - span_x * 0.25
         x_max = x_max_data + span_x * 0.35
 
-        # Tính toán biên độ y trong dải tích phân
         sample_xs = [x_min_data + i * (span_x / 20.0) for i in range(21)]
         sample_ys = [abs(float(f.subs(self.var, sx).evalf())) for sx in sample_xs]
         max_abs_y = max(max(sample_ys) if sample_ys else 1.0, 1.0)
 
-        # TỰ ĐỘNG TÍNH TỶ LỆ VÀNG (Tránh tràn trang A4)
-        # Bề ngang mong muốn ~ 7cm, chiều cao mong muốn ~ 5cm
         x_scale = round(6.5 / span_x, 2)
         y_scale = round(2.8 / max_abs_y, 2)
 
-        # Xử lý đường dóng và nhãn (Tránh đè chữ O và so le)
         dash_lines = []
         for x_n, lx, y_v in exact_pts:
             if abs(x_n) < 0.05:
-                continue  # Bỏ qua gốc O vì đã có chữ O
+                continue
             pos_label = "above" if y_v < -0.2 and not is_volume else "below"
             dash_lines.append(
                 f"    \\draw[dashed, thin] ({x_n:.2f}, 0) node[{pos_label}] {{${lx}$}} -- ({x_n:.2f}, {y_v:.2f});\n"
@@ -372,7 +367,6 @@ class CalculusGeometryEngine:
         dash_code = "\n".join(dash_lines)
 
         if not is_volume:
-            # === DẠNG 1: HÌNH PHẲNG CHUẨN ĐỀ THI 2D ===
             shading_blocks = []
             if intervals:
                 for sub_a, sub_b in intervals:
@@ -383,28 +377,24 @@ class CalculusGeometryEngine:
                     )
             shading_code = "\n".join(shading_blocks)
 
-            return (
-                "% === MÃ TIKZ HÌNH PHẲNG CHUẨN ĐỀ THI THPT ===\n"
-                "% Cần gói: \\usepackage{tikz} và \\usetikzlibrary{patterns}\n"
-                f"\\begin{{tikzpicture}}[xscale={x_scale}, yscale={y_scale}, >=stealth]\n"
-                f"    % Trục tọa độ Oxy\n"
-                f"    \\draw[->, thick] ({x_min:.2f}, 0) -- ({x_max:.2f}, 0) node[below] {{$x$}};\n"
-                f"    \\draw[->, thick] (0, {-max_abs_y * 1.15:.2f}) -- (0, {max_abs_y * 1.25:.2f}) node[left] {{$y$}};\n"
-                f"    \\node[below left] at (0, 0) {{$O$}};\n\n"
-                f"{shading_code}\n\n"
-                f"{dash_code}\n\n"
-                f"    % Đồ thị hai hàm số\n"
-                f"    \\draw[thick, blue!80!black, domain={x_min_data - 0.2:.2f}:{x_max_data + 0.2:.2f}, samples=150] "
-                f"plot (\\x, {{{f_tikz}}}) node[right] {{$y = {sp.latex(f)}$}};\n"
-                f"    \\draw[thick, orange!90!black, dashed, domain={x_min_data - 0.2:.2f}:{x_max_data + 0.2:.2f}, samples=150] "
-                f"plot (\\x, {{{g_tikz}}}) node[right] {{$y = {sp.latex(g)}$}};\n"
-                "\\end{tikzpicture}"
-            )
-        else:
-            # === DẠNG 2: KHỐI TRÒN XOAY 360 ĐỘ KHÔNG GIAN (ĐỔ BÓNG 3D & ELIP) ===
-            rx = round(span_x * 0.04, 3)
+            return f"""% === MÃ TIKZ HÌNH PHẲNG CHUẨN ĐỀ THI THPT ===
+% Cần gói: \\usepackage{{tikz}} và \\usetikzlibrary{{patterns}}
+\\begin{{tikzpicture}}[xscale={x_scale}, yscale={y_scale}, >=stealth]
+    % Trục tọa độ Oxy
+    \\draw[->, thick] ({x_min:.2f}, 0) -- ({x_max:.2f}, 0) node[below] {{$x$}};
+    \\draw[->, thick] (0, {-max_abs_y * 1.15:.2f}) -- (0, {max_abs_y * 1.25:.2f}) node[left] {{$y$}};
+    \\node[below left] at (0, 0) {{$O$}};
 
-            # Các elip mặt cắt tại 2 đầu cận mút
+{shading_code}
+
+{dash_code}
+
+    % Đồ thị hai hàm số
+    \\draw[thick, blue!80!black, domain={x_min_data - 0.2:.2f}:{x_max_data + 0.2:.2f}, samples=150] plot (\\x, {{{f_tikz}}}) node[right] {{$y = {sp.latex(f)}$}};
+    \\draw[thick, orange!90!black, dashed, domain={x_min_data - 0.2:.2f}:{x_max_data + 0.2:.2f}, samples=150] plot (\\x, {{{g_tikz}}}) node[right] {{$y = {sp.latex(g)}$}};
+\\end{{tikzpicture}}"""
+        else:
+            rx = round(span_x * 0.04, 3)
             ellipses = []
             for x_n, _, y_v in exact_pts:
                 ry = abs(y_v)
@@ -416,27 +406,28 @@ class CalculusGeometryEngine:
                     )
             ellipse_code = "\n".join(ellipses)
 
-            return (
-                "% === MÃ TIKZ KHỐI TRÒN XOAY 360 ĐỘ QUANH TRỤC Ox ===\n"
-                "% Cần gói: \\usepackage{tikz}\n"
-                f"\\begin{{tikzpicture}}[xscale={x_scale}, yscale={y_scale}, >=stealth]\n"
-                f"    % Hệ trục tọa độ\n"
-                f"    \\draw[->, thick] ({x_min:.2f}, 0) -- ({x_max:.2f}, 0) node[below] {{$x$}};\n"
-                f"    \\draw[->, thick] (0, {-max_abs_y * 1.25:.2f}) -- (0, {max_abs_y * 1.35:.2f}) node[left] {{$y$}};\n"
-                f"    \\node[below left] at (0, 0) {{$O$}};\n\n"
-                f"    % Thân khối tròn xoay 360 độ (Đổ bóng 3D bề mặt cong)\n"
-                f"    \\shade[top color=cyan!15, bottom color=blue!25, middle color=cyan!40, opacity=0.75]\n"
-                f"        plot[domain={x_min_data:.2f}:{x_max_data:.2f}, samples=100] (\\x, {{{f_tikz}}}) --\n"
-                f"        ({x_max_data:.2f}, {-abs(float(f.subs(self.var, x_max_data).evalf())):.2f}) --\n"
-                f"        plot[domain={x_max_data:.2f}:{x_min_data:.2f}, samples=100] (\\x, {{-({f_tikz})}}) -- cycle;\n\n"
-                f"    % Đường sinh trên và dưới\n"
-                f"    \\draw[thick, blue!85!black, domain={x_min_data:.2f}:{x_max_data:.2f}, samples=120] plot (\\x, {{{f_tikz}}});\n"
-                f"    \\draw[thick, blue!85!black, domain={x_min_data:.2f}:{x_max_data:.2f}, samples=120] plot (\\x, {{-({f_tikz})}});\n\n"
-                f"{ellipse_code}\n\n"
-                f"{dash_code}\n\n"
-                f"    % Ký hiệu góc quay 360 độ quanh Ox\n"
-                f"    \\draw[->, thick, red!85!black] ({x_max - span_x * 0.1:.2f}, {max_abs_y * 0.4:.2f}) "
-                f"arc (60:330:{rx * 1.5:.2f} and {max_abs_y * 0.4:.2f}) node[right] {{$360^\circ$}};
-"
-                "\\end{tikzpicture}"
-            )
+            return f"""% === MÃ TIKZ KHỐI TRÒN XOAY 360 ĐỘ QUANH TRỤC Ox ===
+% Cần gói: \\usepackage{{tikz}}
+\\begin{{tikzpicture}}[xscale={x_scale}, yscale={y_scale}, >=stealth]
+    % Hệ trục tọa độ
+    \\draw[->, thick] ({x_min:.2f}, 0) -- ({x_max:.2f}, 0) node[below] {{$x$}};
+    \\draw[->, thick] (0, {-max_abs_y * 1.25:.2f}) -- (0, {max_abs_y * 1.35:.2f}) node[left] {{$y$}};
+    \\node[below left] at (0, 0) {{$O$}};
+
+    % Thân khối tròn xoay 360 độ (Đổ bóng 3D bề mặt cong)
+    \\shade[top color=cyan!15, bottom color=blue!25, middle color=cyan!40, opacity=0.75]
+        plot[domain={x_min_data:.2f}:{x_max_data:.2f}, samples=100] (\\x, {{{f_tikz}}}) --
+        ({x_max_data:.2f}, {-abs(float(f.subs(self.var, x_max_data).evalf())):.2f}) --
+        plot[domain={x_max_data:.2f}:{x_min_data:.2f}, samples=100] (\\x, {{-({f_tikz})}}) -- cycle;
+
+    % Đường sinh trên và dưới
+    \\draw[thick, blue!85!black, domain={x_min_data:.2f}:{x_max_data:.2f}, samples=120] plot (\\x, {{{f_tikz}}});
+    \\draw[thick, blue!85!black, domain={x_min_data:.2f}:{x_max_data:.2f}, samples=120] plot (\\x, {{-({f_tikz})}});
+
+{ellipse_code}
+
+{dash_code}
+
+    % Ký hiệu góc quay 360 độ quanh Ox
+    \\draw[->, thick, red!85!black] ({x_max - span_x * 0.1:.2f}, {max_abs_y * 0.4:.2f}) arc (60:330:{rx * 1.5:.2f} and {max_abs_y * 0.4:.2f}) node[right] {{$360^\circ$}};
+\\end{{tikzpicture}}"""
