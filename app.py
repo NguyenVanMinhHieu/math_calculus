@@ -125,7 +125,7 @@ with col_view:
                 st.latex(r"V_{Ox} = " + " + ".join(parts_latex))
 
             # Sinh mã TikZ
-            tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, is_volume=False)
+            tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, exact_intervals=res.exact_intervals, is_volume=is_volume)
 
             # ==========================================
             # 1. ĐỒ THỊ 2D CHUẨN ĐỀ THI (SẠCH SẼ, KHÔNG RÁC)

@@ -312,73 +312,131 @@ class CalculusGeometryEngine:
         a: Optional[float] = None,
         b: Optional[float] = None,
         intervals: Optional[List[Tuple[float, float]]] = None,
+        exact_intervals: Optional[List[Tuple[Expr, Expr]]] = None,
         is_volume: bool = False,
     ) -> str:
-        r"""Tự động sinh mã nguồn TikZ chuẩn SGK Toán Việt Nam (Hỗ trợ cả Diện tích & Tròn xoay)."""
+        r"""Tự động sinh mã nguồn TikZ chuẩn Đề thi Quốc gia (Chuẩn tỷ lệ & Khối tròn xoay 360 độ)."""
         f = self._parse_expression(f_expr)
         g = self._parse_expression(g_expr)
         f_tikz = str(f).replace(str(self.var), r"\x").replace("**", "^")
         g_tikz = str(g).replace(str(self.var), r"\x").replace("**", "^")
 
-        if intervals and len(intervals) > 0:
-            all_pts = sorted(list(set([p for inv in intervals for p in inv])))
-            x_min = min(all_pts) - 1.2
-            x_max = max(all_pts) + 1.2
+        # Thu thập các mốc phân hoạch
+        all_pts_num: List[float] = []
+        exact_pts: List[Tuple[float, str, float]] = []  # (x_num, latex_str, y_val)
+
+        if exact_intervals and len(exact_intervals) > 0:
+            seen = set()
+            for sa, sb in exact_intervals:
+                for ep in (sa, sb):
+                    x_n = round(float(ep.evalf()), 4)
+                    if x_n not in seen:
+                        seen.add(x_n)
+                        y_val = float(f.subs(self.var, x_n).evalf())
+                        exact_pts.append((x_n, sp.latex(ep), y_val))
+            exact_pts.sort(key=lambda t: t[0])
+            all_pts_num = [t[0] for t in exact_pts]
+        elif intervals and len(intervals) > 0:
+            all_pts_num = sorted(list(set([p for inv in intervals for p in inv])))
+            exact_pts = [(p, f"{p:g}", float(f.subs(self.var, p).evalf())) for p in all_pts_num]
+
+        if all_pts_num:
+            x_min_data, x_max_data = min(all_pts_num), max(all_pts_num)
         else:
-            all_pts = []
-            x_min, x_max = -2.0, 3.5
+            x_min_data, x_max_data = -1.0, 2.0
 
-        shading_blocks = []
-        if intervals:
-            for sub_a, sub_b in intervals:
-                shading_blocks.append(
-                    f"    % Miền tích phân [{sub_a:.2f}, {sub_b:.2f}]\n"
-                    f"    \\fill[pattern=north east lines, pattern color=blue!45] "
-                    f"plot[domain={sub_a:.2f}:{sub_b:.2f}, samples=100] (\\x, {{{f_tikz}}}) -- "
-                    f"plot[domain={sub_b:.2f}:{sub_a:.2f}, samples=100] (\\x, {{{g_tikz}}}) -- cycle;"
-                )
-                if is_volume:
-                    shading_blocks.append(
-                        f"    \\fill[pattern=north west lines, pattern color=blue!25] "
-                        f"plot[domain={sub_a:.2f}:{sub_b:.2f}, samples=100] (\\x, -({f_tikz})) -- "
-                        f"plot[domain={sub_b:.2f}:{sub_a:.2f}, samples=100] (\\x, -({g_tikz})) -- cycle;"
-                    )
-        shading_code = "\n".join(shading_blocks)
+        span_x = max(x_max_data - x_min_data, 1.0)
+        x_min = x_min_data - span_x * 0.25
+        x_max = x_max_data + span_x * 0.35
 
+        # Tính toán biên độ y trong dải tích phân
+        sample_xs = [x_min_data + i * (span_x / 20.0) for i in range(21)]
+        sample_ys = [abs(float(f.subs(self.var, sx).evalf())) for sx in sample_xs]
+        max_abs_y = max(max(sample_ys) if sample_ys else 1.0, 1.0)
+
+        # TỰ ĐỘNG TÍNH TỶ LỆ VÀNG (Tránh tràn trang A4)
+        # Bề ngang mong muốn ~ 7cm, chiều cao mong muốn ~ 5cm
+        x_scale = round(6.5 / span_x, 2)
+        y_scale = round(2.8 / max_abs_y, 2)
+
+        # Xử lý đường dóng và nhãn (Tránh đè chữ O và so le)
         dash_lines = []
-        for pt in all_pts:
-            val_f = float(f.subs(self.var, pt).evalf())
+        for x_n, lx, y_v in exact_pts:
+            if abs(x_n) < 0.05:
+                continue  # Bỏ qua gốc O vì đã có chữ O
+            pos_label = "above" if y_v < -0.2 and not is_volume else "below"
             dash_lines.append(
-                f"    \\draw[dashed, thin] ({pt:.2f}, 0) node[below] {{${pt:g}$}} -- ({pt:.2f}, {val_f:.2f});\n"
-                f"    \\fill ({pt:.2f}, {val_f:.2f}) circle (1.5pt);"
+                f"    \\draw[dashed, thin] ({x_n:.2f}, 0) node[{pos_label}] {{${lx}$}} -- ({x_n:.2f}, {y_v:.2f});\n"
+                f"    \\fill ({x_n:.2f}, {y_v:.2f}) circle (1.2pt);"
             )
-            if is_volume and abs(val_f) > 0.1:
-                dash_lines.append(
-                    f"    % Elip mặt cắt tròn tại x = {pt:.2f}\n"
-                    f"    \\draw[dashed] ({pt:.2f}, 0) ellipse (0.15 and {abs(val_f):.2f});"
-                )
         dash_code = "\n".join(dash_lines)
 
-        volume_code = ""
-        if is_volume:
-            volume_code = (
-                f"    % Đường đối xứng phản chiếu qua Ox\n"
-                f"    \\draw[thick, blue!60!black, dashed, domain={x_min:.2f}:{x_max:.2f}, samples=150] "
-                f"plot (\\x, -({f_tikz}));\n"
-            )
+        if not is_volume:
+            # === DẠNG 1: HÌNH PHẲNG CHUẨN ĐỀ THI 2D ===
+            shading_blocks = []
+            if intervals:
+                for sub_a, sub_b in intervals:
+                    shading_blocks.append(
+                        f"    \\fill[pattern=north east lines, pattern color=blue!50] "
+                        f"plot[domain={sub_a:.2f}:{sub_b:.2f}, samples=100] (\\x, {{{f_tikz}}}) -- "
+                        f"plot[domain={sub_b:.2f}:{sub_a:.2f}, samples=100] (\\x, {{{g_tikz}}}) -- cycle;"
+                    )
+            shading_code = "\n".join(shading_blocks)
 
-        return (
-            "% Cần gói: \\usepackage{tikz} và \\usetikzlibrary{patterns}\n"
-            "\\begin{tikzpicture}[>=stealth, scale=1.0]\n"
-            f"    % Hệ trục tọa độ Oxy chuẩn SGK\n"
-            f"    \\draw[->, thick] ({x_min:.1f}, 0) -- ({x_max:.1f}, 0) node[below] {{$x$}};\n"
-            f"    \\draw[->, thick] (0, -4.0) -- (0, 5.0) node[left] {{$y$}};\n"
-            f"    \\node[below left] at (0, 0) {{$O$}};\n\n"
-            f"{shading_code}\n\n"
-            f"{dash_code}\n\n"
-            f"    % Đồ thị hai hàm số\n"
-            f"    \\draw[thick, blue!80!black, domain={x_min:.2f}:{x_max:.2f}, samples=150] "
-            f"plot (\\x, {{{f_tikz}}}) node[right] {{$y = {sp.latex(f)}$}};\n"
-            f"{volume_code}"
-            "\\end{tikzpicture}"
-        )
+            return (
+                "% === MÃ TIKZ HÌNH PHẲNG CHUẨN ĐỀ THI THPT ===\n"
+                "% Cần gói: \\usepackage{tikz} và \\usetikzlibrary{patterns}\n"
+                f"\\begin{{tikzpicture}}[xscale={x_scale}, yscale={y_scale}, >=stealth]\n"
+                f"    % Trục tọa độ Oxy\n"
+                f"    \\draw[->, thick] ({x_min:.2f}, 0) -- ({x_max:.2f}, 0) node[below] {{$x$}};\n"
+                f"    \\draw[->, thick] (0, {-max_abs_y * 1.15:.2f}) -- (0, {max_abs_y * 1.25:.2f}) node[left] {{$y$}};\n"
+                f"    \\node[below left] at (0, 0) {{$O$}};\n\n"
+                f"{shading_code}\n\n"
+                f"{dash_code}\n\n"
+                f"    % Đồ thị hai hàm số\n"
+                f"    \\draw[thick, blue!80!black, domain={x_min_data - 0.2:.2f}:{x_max_data + 0.2:.2f}, samples=150] "
+                f"plot (\\x, {{{f_tikz}}}) node[right] {{$y = {sp.latex(f)}$}};\n"
+                f"    \\draw[thick, orange!90!black, dashed, domain={x_min_data - 0.2:.2f}:{x_max_data + 0.2:.2f}, samples=150] "
+                f"plot (\\x, {{{g_tikz}}}) node[right] {{$y = {sp.latex(g)}$}};\n"
+                "\\end{tikzpicture}"
+            )
+        else:
+            # === DẠNG 2: KHỐI TRÒN XOAY 360 ĐỘ KHÔNG GIAN (ĐỔ BÓNG 3D & ELIP) ===
+            rx = round(span_x * 0.04, 3)
+
+            # Các elip mặt cắt tại 2 đầu cận mút
+            ellipses = []
+            for x_n, _, y_v in exact_pts:
+                ry = abs(y_v)
+                if ry > 0.2:
+                    ellipses.append(
+                        f"    % Mặt cắt tròn xoay 360 độ tại x = {x_n:.2f}\n"
+                        f"    \\draw[dashed, thin] ({x_n:.2f}, 0) arc (90:270:{rx} and {ry:.2f});\n"
+                        f"    \\draw[thick, blue!70!black] ({x_n:.2f}, 0) arc (-90:90:{rx} and {ry:.2f});"
+                    )
+            ellipse_code = "\n".join(ellipses)
+
+            return (
+                "% === MÃ TIKZ KHỐI TRÒN XOAY 360 ĐỘ QUANH TRỤC Ox ===\n"
+                "% Cần gói: \\usepackage{tikz}\n"
+                f"\\begin{{tikzpicture}}[xscale={x_scale}, yscale={y_scale}, >=stealth]\n"
+                f"    % Hệ trục tọa độ\n"
+                f"    \\draw[->, thick] ({x_min:.2f}, 0) -- ({x_max:.2f}, 0) node[below] {{$x$}};\n"
+                f"    \\draw[->, thick] (0, {-max_abs_y * 1.25:.2f}) -- (0, {max_abs_y * 1.35:.2f}) node[left] {{$y$}};\n"
+                f"    \\node[below left] at (0, 0) {{$O$}};\n\n"
+                f"    % Thân khối tròn xoay 360 độ (Đổ bóng 3D bề mặt cong)\n"
+                f"    \\shade[top color=cyan!15, bottom color=blue!25, middle color=cyan!40, opacity=0.75]\n"
+                f"        plot[domain={x_min_data:.2f}:{x_max_data:.2f}, samples=100] (\\x, {{{f_tikz}}}) --\n"
+                f"        ({x_max_data:.2f}, {-abs(float(f.subs(self.var, x_max_data).evalf())):.2f}) --\n"
+                f"        plot[domain={x_max_data:.2f}:{x_min_data:.2f}, samples=100] (\\x, {{-({f_tikz})}}) -- cycle;\n\n"
+                f"    % Đường sinh trên và dưới\n"
+                f"    \\draw[thick, blue!85!black, domain={x_min_data:.2f}:{x_max_data:.2f}, samples=120] plot (\\x, {{{f_tikz}}});\n"
+                f"    \\draw[thick, blue!85!black, domain={x_min_data:.2f}:{x_max_data:.2f}, samples=120] plot (\\x, {{-({f_tikz})}});\n\n"
+                f"{ellipse_code}\n\n"
+                f"{dash_code}\n\n"
+                f"    % Ký hiệu góc quay 360 độ quanh Ox\n"
+                f"    \\draw[->, thick, red!85!black] ({x_max - span_x * 0.1:.2f}, {max_abs_y * 0.4:.2f}) "
+                f"arc (60:330:{rx * 1.5:.2f} and {max_abs_y * 0.4:.2f}) node[right] {{$360^\circ$}};
+"
+                "\\end{tikzpicture}"
+            )
