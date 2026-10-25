@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học THPT - Khối tròn xoay chuẩn mực Sách giáo khoa."""
+"""Web App Giải tích Hình học THPT - Mô phỏng toàn diện |f(x) - g(x)| xoay quanh Ox."""
 
 from __future__ import annotations
 
@@ -39,37 +39,37 @@ mode = st.sidebar.radio(
 is_volume = "Thể tích" in mode
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("💡 **Ví dụ mẫu SGK:**")
-if st.sidebar.button("📌 Khối tròn xoay hình chuông"):
-    st.session_state["f_input"] = "1 + 0.3*(x-1)**2"
-    st.session_state["g_input"] = "0"
-    st.session_state["use_bounds"] = True
-    st.session_state["a_val"] = 0.0
-    st.session_state["b_val"] = 3.0
+st.sidebar.markdown("💡 **Ví dụ mẫu:**")
 if st.sidebar.button("📌 y = x^3 và y = 2x"):
     st.session_state["f_input"] = "x^3"
     st.session_state["g_input"] = "2x"
     st.session_state["use_bounds"] = True
     st.session_state["a_val"] = -1.0
     st.session_state["b_val"] = 2.0
+if st.sidebar.button("📌 Parabol y = 4 - x^2 và Ox"):
+    st.session_state["f_input"] = "4 - x^2"
+    st.session_state["g_input"] = "0"
+    st.session_state["use_bounds"] = True
+    st.session_state["a_val"] = 0.0
+    st.session_state["b_val"] = 2.0
 
 if "f_input" not in st.session_state:
-    st.session_state["f_input"] = "1 + 0.3*(x-1)**2"
+    st.session_state["f_input"] = "x^3"
 if "g_input" not in st.session_state:
-    st.session_state["g_input"] = "0"
+    st.session_state["g_input"] = "2x"
 if "use_bounds" not in st.session_state:
     st.session_state["use_bounds"] = True
 if "a_val" not in st.session_state:
-    st.session_state["a_val"] = 0.0
+    st.session_state["a_val"] = -1.0
 if "b_val" not in st.session_state:
-    st.session_state["b_val"] = 3.0
+    st.session_state["b_val"] = 2.0
 
 col_input, col_view = st.columns([1, 1.4], gap="large")
 
 with col_input:
     st.subheader("📝 Dữ liệu đầu vào")
     f_raw = st.text_input("Hàm số f(x):", value=st.session_state["f_input"])
-    g_raw = st.text_input("Hàm số g(x) (trục hoành = 0):", value=st.session_state["g_input"])
+    g_raw = st.text_input("Hàm số g(x) (trục hoành đặt là 0):", value=st.session_state["g_input"])
 
     try:
         f_clean = preprocess_math_str(f_raw)
@@ -94,7 +94,7 @@ with col_input:
     btn_calc = st.button("🚀 Bắt đầu tính toán & Dựng hình", type="primary", use_container_width=True)
 
 with col_view:
-    title_res = "🎯 Khối tròn xoay chuẩn SGK" if is_volume else "🎯 Hình phẳng chuẩn Đề thi"
+    title_res = "🎯 Khối tròn xoay của |f(x) - g(x)|" if is_volume else "🎯 Hình phẳng chuẩn Đề thi"
     st.subheader(title_res)
     if btn_calc or "has_run" in st.session_state:
         st.session_state["has_run"] = True
@@ -102,6 +102,7 @@ with col_view:
             x_sym = engine.var
             f_expr = engine._parse_expression(f_clean)
             g_expr = engine._parse_expression(g_clean)
+            has_g = str(g_expr) != "0"
 
             if not is_volume:
                 res = engine.calculate_area(f_expr, g_expr, a=a_val, b=b_val)
@@ -112,7 +113,6 @@ with col_view:
                 st.success("✅ Đã tính xong Thể tích khối tròn xoay quanh Ox!")
                 st.latex(rf"V_{{Ox}} = {res.latex_str} \approx {res.numeric_value:.6f}")
 
-            # Lấy cận mút chính xác
             all_pts = [pt for interval in res.intervals for pt in interval]
             x_a, x_b = min(all_pts), max(all_pts)
             label_a = f"{x_a:g}"
@@ -121,12 +121,9 @@ with col_view:
                 label_a = sp.latex(res.exact_intervals[0][0])
                 label_b = sp.latex(res.exact_intervals[-1][1])
 
-            # Sinh mã TikZ
             tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, exact_intervals=res.exact_intervals, is_volume=is_volume)
 
-            # ==========================================
-            # DỰNG HÌNH CHUẨN SÁCH GIÁO KHOA
-            # ==========================================
+            # DỰNG HÌNH CHUẨN XÁC
             fig, ax = plt.subplots(figsize=(6.8, 4.4), dpi=130)
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
@@ -136,71 +133,86 @@ with col_view:
             ax.set_yticks([])
 
             f_num = sp.lambdify(x_sym, f_expr, modules=["numpy"])
+            g_num = sp.lambdify(x_sym, g_expr, modules=["numpy"])
+
             span = max(x_b - x_a, 1.0)
-            x_min = x_a - span * 0.3
+            x_min = x_a - span * 0.25
             x_max = x_b + span * 0.35
 
             xs_curve = np.linspace(x_a, x_b, 300)
-            ys_upper = np.abs(np.asarray(f_num(xs_curve), dtype=float))
-            if ys_upper.ndim == 0: ys_upper = np.full_like(xs_curve, ys_upper)
-            ys_lower = -ys_upper
+            yf = np.asarray(f_num(xs_curve), dtype=float)
+            yg = np.asarray(g_num(xs_curve), dtype=float)
+            if yf.ndim == 0: yf = np.full_like(xs_curve, yf)
+            if yg.ndim == 0: yg = np.full_like(xs_curve, yg)
 
-            max_r = max(np.max(ys_upper), 1.0)
-            y_lim = max_r * 1.4
+            max_r = max(np.max(np.abs(yf)), np.max(np.abs(yg)), 1.0)
+            y_lim = max_r * 1.35
             ax.set_xlim(x_min, x_max)
             ax.set_ylim(-y_lim, y_lim)
 
             if is_volume:
-                # 1. Trục Ox: đoạn [a, b] bên trong vẽ nét đứt
+                # 1. Trục Ox xuyên tâm (đoạn trong [a, b] nét đứt)
                 ax.plot([x_min, x_a], [0, 0], color="black", linewidth=1.2)
                 ax.plot([x_a, x_b], [0, 0], color="black", linestyle="--", linewidth=1.2)
                 ax.plot([x_b, x_max], [0, 0], color="black", linewidth=1.2)
                 ax.plot(x_max, 0, ">k", clip_on=False, markersize=5)
                 ax.text(x_max, -y_lim * 0.08, r"$x$", fontsize=12, style="italic")
 
-                # Chấm tròn mốc a và b
+                # Chấm mốc a và b
                 ax.plot(x_a, 0, "ko", markersize=4.5)
                 ax.plot(x_b, 0, "ko", markersize=4.5)
                 ax.text(x_a, -y_lim * 0.14, rf"${label_a}$", fontsize=11, ha="center")
                 ax.text(x_b, -y_lim * 0.14, rf"${label_b}$", fontsize=11, ha="center")
 
-                # 2. Miền phẳng f(x) ban đầu gạch sọc hồng/tím chuẩn SGK
-                ax.fill_between(xs_curve, ys_upper, 0, facecolor="#fce4ec", edgecolor="#c2185b", hatch="///", linewidth=0.6, alpha=0.9)
+                # 2. Miền phẳng gốc (H) giữa f(x) và g(x) (Gạch sọc)
+                ax.fill_between(xs_curve, yf, yg, facecolor="#fce4ec", edgecolor="#c2185b", hatch="///", linewidth=0.6, alpha=0.9)
 
-                # Hai đoạn dóng thẳng đứng nét đứt
-                fa = float(ys_upper[0])
-                fb = float(ys_upper[-1])
-                ax.plot([x_a, x_a], [0, fa], color="#c2185b", linestyle="--", linewidth=1.1)
-                ax.plot([x_b, x_b], [0, fb], color="#c2185b", linestyle="--", linewidth=1.1)
+                # Miền phản chiếu đối xứng qua Ox
+                ax.fill_between(xs_curve, -yf, -yg, facecolor="#e1f5fe", edgecolor="#0288d1", hatch="\\\\\\", linewidth=0.5, alpha=0.45)
 
-                # 3. Hai đường sinh biên: Trên f(x) và dưới đối xứng -f(x)
-                ax.plot(xs_curve, ys_upper, color="#005f73", linewidth=2.0)
-                ax.plot(xs_curve, ys_lower, color="#005f73", linewidth=2.0)
+                # 3. Hai đường cong gốc và hai đường đối xứng qua Ox
+                ax.plot(xs_curve, yf, color="#005f73", linewidth=2.0, label=rf"$y = {sp.latex(f_expr)}$")
+                ax.plot(xs_curve, -yf, color="#005f73", linestyle="--", linewidth=1.2, alpha=0.7)
+                if has_g:
+                    ax.plot(xs_curve, yg, color="#ca6702", linewidth=1.8, label=rf"$y = {sp.latex(g_expr)}$")
+                    ax.plot(xs_curve, -yg, color="#ca6702", linestyle="--", linewidth=1.2, alpha=0.7)
 
-                # 4. Hai Elip tại a và b
+                # 4. Mặt cắt Elip tại a và b (Washer Ellipses)
                 rx = span * 0.045
-                # Tại a: nửa trong nét đứt, nửa ngoài nét liền
+                fa, ga = abs(float(yf[0])), abs(float(yg[0]))
+                fb, gb = abs(float(yf[-1])), abs(float(yg[-1]))
+                r_out_a, r_in_a = max(fa, ga), min(fa, ga)
+                r_out_b, r_in_b = max(fb, gb), min(fb, gb)
+
+                # Tại a:
                 t_in = np.linspace(-np.pi/2, np.pi/2, 60)
                 t_out = np.linspace(np.pi/2, 3*np.pi/2, 60)
-                ax.plot(x_a + rx * np.cos(t_in), fa * np.sin(t_in), color="#005f73", linestyle="--", linewidth=1.1)
-                ax.plot(x_a + rx * np.cos(t_out), fa * np.sin(t_out), color="#005f73", linestyle="-", linewidth=1.8)
+                if r_out_a > 0.1:
+                    ax.plot(x_a + rx * np.cos(t_in), r_out_a * np.sin(t_in), color="#005f73", linestyle="--", linewidth=1.1)
+                    ax.plot(x_a + rx * np.cos(t_out), r_out_a * np.sin(t_out), color="#005f73", linestyle="-", linewidth=1.8)
+                if has_g and r_in_a > 0.15 and abs(r_out_a - r_in_a) > 0.1:
+                    ax.plot(x_a + rx * 0.7 * np.cos(t_in), r_in_a * np.sin(t_in), color="#ca6702", linestyle="--", linewidth=0.9)
+                    ax.plot(x_a + rx * 0.7 * np.cos(t_out), r_in_a * np.sin(t_out), color="#ca6702", linestyle="--", linewidth=1.2)
 
-                # Tại b: toàn bộ Elip nét liền
+                # Tại b:
                 t_full = np.linspace(0, 2*np.pi, 120)
-                ax.plot(x_b + rx * np.cos(t_full), fb * np.sin(t_full), color="#005f73", linestyle="-", linewidth=1.8)
+                if r_out_b > 0.1:
+                    ax.plot(x_b + rx * np.cos(t_full), r_out_b * np.sin(t_full), color="#005f73", linestyle="-", linewidth=1.8)
+                if has_g and r_in_b > 0.15 and abs(r_out_b - r_in_b) > 0.1:
+                    ax.plot(x_b + rx * 0.7 * np.cos(t_full), r_in_b * np.sin(t_full), color="#ca6702", linestyle="-", linewidth=1.3)
 
-                # Nhãn f(x)
-                mid_idx = len(xs_curve) // 2
-                ax.text(xs_curve[mid_idx], ys_upper[mid_idx] * 1.12, r"$f(x)$", fontsize=12, style="italic", ha="center")
+                ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#e0e0e0", fontsize=9)
             else:
-                # Hình 2D phẳng
+                # 2D thông thường
                 ax.spines["left"].set_visible(True)
                 ax.spines["bottom"].set_visible(True)
                 ax.spines["left"].set_position(("data", 0))
                 ax.spines["bottom"].set_position(("data", 0))
-                ax.plot(xs_curve, ys_upper, color="#005f73", linewidth=2.0, label=r"$y = f(x)$")
-                ax.fill_between(xs_curve, ys_upper, 0, facecolor="#edf4f9", edgecolor="#1d3557", hatch="///", alpha=0.8)
-                ax.legend()
+                ax.plot(xs_curve, yf, color="#005f73", linewidth=2.0, label=rf"$y = {sp.latex(f_expr)}$")
+                if has_g:
+                    ax.plot(xs_curve, yg, color="#ca6702", linestyle="--", linewidth=1.8, label=rf"$y = {sp.latex(g_expr)}$")
+                ax.fill_between(xs_curve, yf, yg, facecolor="#edf4f9", edgecolor="#1d3557", hatch="///", alpha=0.85)
+                ax.legend(loc="upper left", frameon=True, fontsize=9)
 
             svg_buffer = io.StringIO()
             fig.savefig(svg_buffer, format="svg", bbox_inches="tight")
@@ -211,19 +223,18 @@ with col_view:
             png_data = png_buffer.getvalue()
             plt.close(fig)
 
-            # Tabs hiển thị
-            tab_img, tab_tikz = st.tabs(["📊 Hình vẽ chuẩn Sách Giáo Khoa", "📋 Mã nguồn TikZ (LaTeX)"])
+            tab_img, tab_tikz = st.tabs(["📊 Khối tròn xoay |f(x) - g(x)|", "📋 Mã nguồn TikZ (LaTeX)"])
 
             with tab_img:
                 st.image(svg_data, use_container_width=True)
                 c_btn1, c_btn2 = st.columns(2)
                 with c_btn1:
-                    st.download_button("📥 Tải ảnh SVG (Vector)", data=svg_data, file_name="khoi_tron_xoay_sgk.svg", mime="image/svg+xml", use_container_width=True)
+                    st.download_button("📥 Tải ảnh SVG (Vector)", data=svg_data, file_name="khoi_tron_xoay.svg", mime="image/svg+xml", use_container_width=True)
                 with c_btn2:
-                    st.download_button("📥 Tải ảnh PNG (300 DPI)", data=png_data, file_name="khoi_tron_xoay_sgk.png", mime="image/png", use_container_width=True)
+                    st.download_button("📥 Tải ảnh PNG (300 DPI)", data=png_data, file_name="khoi_tron_xoay.png", mime="image/png", use_container_width=True)
 
             with tab_tikz:
-                st.info("💡 Mã TikZ chuẩn 100% hình minh họa SGK để Thầy copy vào đề thi:")
+                st.info("💡 Mã TikZ chuẩn xác cho bài toán quay |f(x) - g(x)| quanh Ox:")
                 st.code(tikz_code, language="latex")
 
         except Exception as e:
