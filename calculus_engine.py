@@ -312,8 +312,9 @@ class CalculusGeometryEngine:
         a: Optional[float] = None,
         b: Optional[float] = None,
         intervals: Optional[List[Tuple[float, float]]] = None,
+        is_volume: bool = False,
     ) -> str:
-        r"""Tự động sinh mã nguồn TikZ chuẩn SGK Toán Việt Nam."""
+        r"""Tự động sinh mã nguồn TikZ chuẩn SGK Toán Việt Nam (Hỗ trợ cả Diện tích & Tròn xoay)."""
         f = self._parse_expression(f_expr)
         g = self._parse_expression(g_expr)
         f_tikz = str(f).replace(str(self.var), r"\x").replace("**", "^")
@@ -327,19 +328,23 @@ class CalculusGeometryEngine:
             all_pts = []
             x_min, x_max = -2.0, 3.5
 
-        # 1. Miền gạch chéo
         shading_blocks = []
         if intervals:
             for sub_a, sub_b in intervals:
                 shading_blocks.append(
-                    f"    % Miền gạch chéo tích phân [{sub_a:.2f}, {sub_b:.2f}]\n"
+                    f"    % Miền tích phân [{sub_a:.2f}, {sub_b:.2f}]\n"
                     f"    \\fill[pattern=north east lines, pattern color=blue!45] "
                     f"plot[domain={sub_a:.2f}:{sub_b:.2f}, samples=100] (\\x, {{{f_tikz}}}) -- "
                     f"plot[domain={sub_b:.2f}:{sub_a:.2f}, samples=100] (\\x, {{{g_tikz}}}) -- cycle;"
                 )
+                if is_volume:
+                    shading_blocks.append(
+                        f"    \\fill[pattern=north west lines, pattern color=blue!25] "
+                        f"plot[domain={sub_a:.2f}:{sub_b:.2f}, samples=100] (\\x, -({f_tikz})) -- "
+                        f"plot[domain={sub_b:.2f}:{sub_a:.2f}, samples=100] (\\x, -({g_tikz})) -- cycle;"
+                    )
         shading_code = "\n".join(shading_blocks)
 
-        # 2. Đường dóng tọa độ nét đứt
         dash_lines = []
         for pt in all_pts:
             val_f = float(f.subs(self.var, pt).evalf())
@@ -347,22 +352,33 @@ class CalculusGeometryEngine:
                 f"    \\draw[dashed, thin] ({pt:.2f}, 0) node[below] {{${pt:g}$}} -- ({pt:.2f}, {val_f:.2f});\n"
                 f"    \\fill ({pt:.2f}, {val_f:.2f}) circle (1.5pt);"
             )
+            if is_volume and abs(val_f) > 0.1:
+                dash_lines.append(
+                    f"    % Elip mặt cắt tròn tại x = {pt:.2f}\n"
+                    f"    \\draw[dashed] ({pt:.2f}, 0) ellipse (0.15 and {abs(val_f):.2f});"
+                )
         dash_code = "\n".join(dash_lines)
+
+        volume_code = ""
+        if is_volume:
+            volume_code = (
+                f"    % Đường đối xứng phản chiếu qua Ox\n"
+                f"    \\draw[thick, blue!60!black, dashed, domain={x_min:.2f}:{x_max:.2f}, samples=150] "
+                f"plot (\\x, -({f_tikz}));\n"
+            )
 
         return (
             "% Cần gói: \\usepackage{tikz} và \\usetikzlibrary{patterns}\n"
             "\\begin{tikzpicture}[>=stealth, scale=1.0]\n"
             f"    % Hệ trục tọa độ Oxy chuẩn SGK\n"
             f"    \\draw[->, thick] ({x_min:.1f}, 0) -- ({x_max:.1f}, 0) node[below] {{$x$}};\n"
-            f"    \\draw[->, thick] (0, -1.0) -- (0, 5.0) node[left] {{$y$}};\n"
+            f"    \\draw[->, thick] (0, -4.0) -- (0, 5.0) node[left] {{$y$}};\n"
             f"    \\node[below left] at (0, 0) {{$O$}};\n\n"
             f"{shading_code}\n\n"
             f"{dash_code}\n\n"
             f"    % Đồ thị hai hàm số\n"
             f"    \\draw[thick, blue!80!black, domain={x_min:.2f}:{x_max:.2f}, samples=150] "
             f"plot (\\x, {{{f_tikz}}}) node[right] {{$y = {sp.latex(f)}$}};\n"
-            f"    \\draw[thick, red!80!black, dashed, domain={x_min:.2f}:{x_max:.2f}, samples=150] "
-            f"plot (\\x, {{{g_tikz}}}) node[right] {{$y = {sp.latex(g)}$}};\n"
+            f"{volume_code}"
             "\\end{tikzpicture}"
         )
-
