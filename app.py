@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học chuẩn Sư phạm Toán THPT - Tối ưu Layout & Typography."""
+"""Web App Giải tích Hình học chuẩn Sư phạm Toán THPT - Hiển thị nhãn nghiệm giải tích."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ import sympy as sp
 
 from calculus_engine import CalculusGeometryEngine
 
-# Cấu hình thẩm mỹ Toán học
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["font.family"] = "serif"
 
@@ -23,14 +22,11 @@ st.markdown("**Hỗ trợ nghiên cứu và giảng dạy Toán học - Thầy g
 engine = CalculusGeometryEngine()
 
 def preprocess_math_str(s: str) -> str:
-    """Cho phép gõ tự nhiên: 2x -> 2*x, x^3 -> x**3."""
+    """Tự động chuyển đổi ký hiệu: 2x -> 2*x, x^3 -> x**3."""
     if not s or s.strip() == "0":
         return "0"
-    s = s.strip()
-    s = s.replace("^", "**")
-    # Tự động chèn dấu nhân: số đứng trước chữ cái (2x -> 2*x)
+    s = s.strip().replace("^", "**")
     s = re.sub(r'(\d)([a-zA-Z\(])', r'\1*\2', s)
-    # Tự động chèn dấu nhân: đóng ngoặc trước mở ngoặc (x+1)(x-2) -> (x+1)*(x-2)
     s = re.sub(r'(\))(\()', r'\1*\2', s)
     return s
 
@@ -41,34 +37,32 @@ mode = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("💡 **Gợi ý bài toán hay:**")
-if st.sidebar.button("📌 Bậc 3 và Tiếp tuyến"):
-    st.session_state["f_input"] = "x^3 - 2*x^2 + 1"
+st.sidebar.markdown("💡 **Ví dụ mẫu:**")
+if st.sidebar.button("📌 y = x^3 và y = 2x"):
+    st.session_state["f_input"] = "x^3"
     st.session_state["g_input"] = "2x"
-    st.session_state["use_bounds"] = False
-if st.sidebar.button("📌 Parabol & Trục hoành"):
-    st.session_state["f_input"] = "4 - x^2"
-    st.session_state["g_input"] = "0"
-    st.session_state["use_bounds"] = False
+    st.session_state["use_bounds"] = True
+    st.session_state["a_val"] = -1.0
+    st.session_state["b_val"] = 2.0
 
-# Thiết lập giá trị mặc định vào session state
 if "f_input" not in st.session_state:
-    st.session_state["f_input"] = "x^3 - 2*x^2 + 1"
+    st.session_state["f_input"] = "x^3"
 if "g_input" not in st.session_state:
     st.session_state["g_input"] = "2x"
 if "use_bounds" not in st.session_state:
-    st.session_state["use_bounds"] = False
+    st.session_state["use_bounds"] = True
+if "a_val" not in st.session_state:
+    st.session_state["a_val"] = -1.0
+if "b_val" not in st.session_state:
+    st.session_state["b_val"] = 2.0
 
-# BỐ CỤC CHÍNH 2 CỘT CÂN ĐỐI
 col_input, col_view = st.columns([1, 1.4], gap="large")
 
 with col_input:
     st.subheader("📝 Dữ liệu đầu vào")
-    
     f_raw = st.text_input("Hàm số f(x):", value=st.session_state["f_input"])
-    g_raw = st.text_input("Hàm số g(x) (hoặc trục hoành = 0):", value=st.session_state["g_input"])
+    g_raw = st.text_input("Hàm số g(x) (trục hoành = 0):", value=st.session_state["g_input"])
 
-    # Hiển thị trực quan ngay công thức đang gõ (Live Preview)
     try:
         f_clean = preprocess_math_str(f_raw)
         g_clean = preprocess_math_str(g_raw)
@@ -85,21 +79,11 @@ with col_input:
     if use_custom_bounds:
         c1, c2 = st.columns(2)
         with c1:
-            a_val = st.number_input("Cận dưới (a):", value=-1.0)
+            a_val = st.number_input("Cận dưới (a):", value=float(st.session_state["a_val"]))
         with c2:
-            b_val = st.number_input("Cận trên (b):", value=2.6)
+            b_val = st.number_input("Cận trên (b):", value=float(st.session_state["b_val"]))
 
     btn_calc = st.button("🚀 Bắt đầu tính toán & Dựng hình", type="primary", use_container_width=True)
-    
-    st.markdown("---")
-    st.markdown(
-        """
-        **Hướng dẫn thao tác:**
-        * Nhập đa thức, căn thức hoặc lượng giác dễ dàng (`x^2`, `2x`, `sin(x)`).
-        * Không cần gõ `2*x`, hệ thống tự nhận diện phép nhân ẩn.
-        * Đồ thị SVG xuất ra có thể phóng to tùy ý không bị vỡ ảnh.
-        """
-    )
 
 with col_view:
     st.subheader("🎯 Bản vẽ Sư phạm & Lời giải")
@@ -119,17 +103,18 @@ with col_view:
                 st.success("✅ Đã tính xong Thể tích khối tròn xoay quanh Ox!")
                 st.latex(rf"V_{{Ox}} = {res.latex_str} \approx {res.numeric_value:.6f}")
 
-            # Trình bày phân hoạch sư phạm
+            # 1. Trình bày công thức phân đoạn với nhãn giải tích (\sqrt{2}, -1, 2)
             parts_latex = []
-            for sub_a, sub_b in res.intervals:
-                parts_latex.append(rf"\int_{{{sub_a:.2f}}}^{{{sub_b:.2f}}} |f(x) - g(x)| dx")
-            st.markdown("**Công thức tích phân từng đoạn:**")
+            exact_pairs = res.exact_intervals if res.exact_intervals else [(sp.sympify(a), sp.sympify(b)) for a, b in res.intervals]
+            for sa, sb in exact_pairs:
+                parts_latex.append(rf"\int_{{{sp.latex(sa)}}}^{{{sp.latex(sb)}}} |f(x) - g(x)| dx")
+            st.markdown("**Công thức tích phân chuẩn giải tích:**")
             st.latex("S = " + " + ".join(parts_latex))
 
-            # Sinh mã TikZ
+            # 2. Sinh mã TikZ
             tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals)
 
-            # VẼ ĐỒ THỊ CHUẨN MỰC
+            # 3. Dựng đồ thị
             fig, ax = plt.subplots(figsize=(6.8, 4.4), dpi=130)
 
             ax.spines["top"].set_visible(False)
@@ -139,16 +124,19 @@ with col_view:
             ax.spines["left"].set_linewidth(1.2)
             ax.spines["bottom"].set_linewidth(1.2)
 
+            # TRIỆT TIÊU ĐÈ CHỮ: Tắt toàn bộ nhãn số mặc định của trục Ox
+            ax.set_xticks([])
+
             f_num = sp.lambdify(x_sym, f_expr, modules=["numpy"])
             g_num = sp.lambdify(x_sym, g_expr, modules=["numpy"])
 
             all_x = [pt for interval in res.intervals for pt in interval]
             span = max(all_x) - min(all_x)
-            margin_x = max(span * 0.25, 0.8)
+            margin_x = max(span * 0.28, 0.8)
             x_min, x_max = min(all_x) - margin_x, max(all_x) + margin_x
             xs = np.linspace(x_min, x_max, 500)
 
-            # Thu thập giá trị y TRONG MIỀN TÍCH PHÂN để lấy nét trọng tâm
+            # Lấy nét trục Oy
             x_focus = np.linspace(min(all_x), max(all_x), 300)
             yf_focus = np.asarray(f_num(x_focus), dtype=float)
             yg_focus = np.asarray(g_num(x_focus), dtype=float)
@@ -163,16 +151,20 @@ with col_view:
             ax.set_xlim(x_min, x_max)
             ax.set_ylim(y_min_plot, y_max_plot)
 
-            # Vẽ mũi tên trục
+            # Lọc trục Oy: loại bỏ nhãn số 0 để không bao giờ đè chữ O
+            current_yticks = ax.get_yticks()
+            ax.set_yticks([y for y in current_yticks if abs(y) > 0.1])
+
+            # Mũi tên trục
             ax.plot(x_max, 0, ">k", clip_on=False, markersize=5)
             ax.plot(0, y_max_plot, "^k", clip_on=False, markersize=5)
 
-            # Chữ O, x, y tránh đè nhau
+            # Chữ O, x, y
             dx = (x_max - x_min) * 0.02
             dy = (y_max_plot - y_min_plot) * 0.035
-            ax.text(x_max, -dy * 1.3, r"$x$", fontsize=12, style="italic", ha="center")
+            ax.text(x_max, -dy * 1.4, r"$x$", fontsize=12, style="italic", ha="center")
             ax.text(-dx * 1.8, y_max_plot, r"$y$", fontsize=12, style="italic", va="center")
-            ax.text(-dx * 1.8, -dy * 1.3, r"$O$", fontsize=11, style="italic")
+            ax.text(-dx * 1.8, -dy * 1.4, r"$O$", fontsize=11, style="italic")
 
             ax.grid(True, linestyle=":", alpha=0.35, color="#888888")
 
@@ -190,7 +182,7 @@ with col_view:
                     hatch="///", linewidth=0.5, alpha=0.9
                 )
 
-            # Vẽ đường cong
+            # Đồ thị hai hàm số
             ys_f = np.asarray(f_num(xs), dtype=float)
             ys_g = np.asarray(g_num(xs), dtype=float)
             if ys_f.ndim == 0: ys_f = np.full_like(xs, ys_f)
@@ -199,23 +191,41 @@ with col_view:
             ax.plot(xs, ys_f, label=rf"$y = {sp.latex(f_expr)}$", color="#005f73", linewidth=2.0)
             ax.plot(xs, ys_g, label=rf"$y = {sp.latex(g_expr)}$", color="#ca6702", linestyle="--", linewidth=1.8)
 
-            # Đường dóng và nhãn số sạch sẽ
-            unique_pts = sorted(list(set(all_x)))
-            for pt in unique_pts:
-                f_val = float(np.asarray(f_num(pt)).item())
-                g_val = float(np.asarray(g_num(pt)).item())
+            # 4. GHI NHÃN GIẢI TÍCH CHUẨN XÁC (\sqrt{2}, -1, 2)
+            # Tập hợp các điểm mốc từ exact_intervals
+            exact_points = []
+            for sa, sb in exact_pairs:
+                exact_points.extend([sa, sb])
+            # Khử trùng lặp theo giá trị số nhưng giữ biểu thức Expr
+            unique_exact = []
+            seen_floats = []
+            for ep in exact_points:
+                val = round(float(ep.evalf()), 5)
+                if val not in seen_floats:
+                    seen_floats.append(val)
+                    unique_exact.append(ep)
+
+            # Sắp xếp từ trái sang phải
+            unique_exact.sort(key=lambda item: float(item.evalf()))
+
+            for ep in unique_exact:
+                pt_num = float(ep.evalf())
+                f_val = float(np.asarray(f_num(pt_num)).item())
+                g_val = float(np.asarray(g_num(pt_num)).item())
                 target_y = f_val if abs(f_val) > abs(g_val) else g_val
 
-                ax.plot([pt, pt], [0, target_y], color="#555555", linestyle=":", linewidth=0.9)
-                ax.plot(pt, target_y, marker="o", markersize=4, color="#1d3557")
-                
-                # Chỉ in nhãn nếu không quá gần gốc O (tránh đè chữ O)
-                if abs(pt) > 0.18:
-                    ax.text(pt, -dy * 1.3, f"{pt:.2f}", fontsize=9, ha="center", color="#111111")
+                # Đường dóng nét đứt
+                ax.plot([pt_num, pt_num], [0, target_y], color="#555555", linestyle=":", linewidth=0.9)
+                ax.plot(pt_num, target_y, marker="o", markersize=4, color="#1d3557")
+
+                # Không in nhãn số tại gốc O(0,0) vì đã có chữ O
+                if abs(pt_num) > 0.08:
+                    label_latex = sp.latex(ep)
+                    ax.text(pt_num, -dy * 1.4, rf"${label_latex}$", fontsize=11, ha="center", color="#111111")
 
             ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#e0e0e0", fontsize=9.5)
 
-            # Xuất dữ liệu ảnh
+            # Xuất buffers
             svg_buffer = io.StringIO()
             fig.savefig(svg_buffer, format="svg", bbox_inches="tight")
             svg_data = svg_buffer.getvalue()
@@ -249,7 +259,7 @@ with col_view:
                     )
 
             with tab_tikz:
-                st.info("💡 Mã TikZ chuẩn SGK (đã có đường dóng tọa độ):")
+                st.info("💡 Mã TikZ chuẩn SGK:")
                 st.code(tikz_code, language="latex")
 
         except Exception as e:

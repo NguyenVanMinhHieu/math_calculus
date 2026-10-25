@@ -180,11 +180,13 @@ class CalculusGeometryEngine:
         total_area = sp.simplify(total_area)
         numeric_val = float(total_area.evalf())
 
+        exact_intervals_used = [(partition[i], partition[i+1]) for i in range(len(partition) - 1)]
         return MathResult(
             exact_value=total_area,
             numeric_value=numeric_val,
             latex_str=sp.latex(total_area),
             intervals=intervals_used,
+            exact_intervals=exact_intervals_used,
         )
 
     def calculate_rotation_volume_ox(
@@ -237,11 +239,13 @@ class CalculusGeometryEngine:
         total_volume = sp.simplify(sp.pi * total_integral)
         numeric_val = float(total_volume.evalf())
 
+        exact_intervals_used = [(partition[i], partition[i+1]) for i in range(len(partition) - 1)]
         return MathResult(
             exact_value=total_volume,
             numeric_value=numeric_val,
             latex_str=sp.latex(total_volume),
             intervals=intervals_used,
+            exact_intervals=exact_intervals_used,
         )
 
     def calculate_rotation_volume_oy(
@@ -291,11 +295,13 @@ class CalculusGeometryEngine:
         total_volume = sp.simplify(2 * sp.pi * total_integral)
         numeric_val = float(total_volume.evalf())
 
+        exact_intervals_used = [(partition[i], partition[i+1]) for i in range(len(partition) - 1)]
         return MathResult(
             exact_value=total_volume,
             numeric_value=numeric_val,
             latex_str=sp.latex(total_volume),
             intervals=intervals_used,
+            exact_intervals=exact_intervals_used,
         )
 
     def generate_tikz(
