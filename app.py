@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học THPT - Tự động thích ứng Diện tích phẳng & Khối tròn xoay 2D/3D."""
+"""Web App Giải tích Hình học THPT - Chuẩn mực Sư phạm Đề thi Quốc gia."""
 
 from __future__ import annotations
 
@@ -125,10 +125,10 @@ with col_view:
                 st.latex(r"V_{Ox} = " + " + ".join(parts_latex))
 
             # Sinh mã TikZ
-            tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, is_volume=is_volume)
+            tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, is_volume=False)
 
             # ==========================================
-            # 1. HÌNH VẼ 2D CHUẨN SGK (VECTOR SVG)
+            # 1. ĐỒ THỊ 2D CHUẨN ĐỀ THI (SẠCH SẼ, KHÔNG RÁC)
             # ==========================================
             fig, ax = plt.subplots(figsize=(6.8, 4.4), dpi=130)
 
@@ -155,16 +155,10 @@ with col_view:
             if yf_focus.ndim == 0: yf_focus = np.full_like(x_focus, yf_focus)
             if yg_focus.ndim == 0: yg_focus = np.full_like(x_focus, yg_focus)
 
-            max_abs_y = max(np.max(np.abs(yf_focus)), np.max(np.abs(yg_focus)))
-            if is_volume:
-                # Đối xứng hoàn toàn qua trục Ox
-                y_max_plot = max_abs_y * 1.35
-                y_min_plot = -y_max_plot
-            else:
-                y_f_min, y_f_max = min(np.min(yf_focus), np.min(yg_focus)), max(np.max(yf_focus), np.max(yg_focus))
-                margin_y = max((y_f_max - y_f_min) * 0.35, 1.2)
-                y_min_plot = min(y_f_min - margin_y, -0.6)
-                y_max_plot = max(y_f_max + margin_y, 1.0)
+            y_f_min, y_f_max = min(np.min(yf_focus), np.min(yg_focus)), max(np.max(yf_focus), np.max(yg_focus))
+            margin_y = max((y_f_max - y_f_min) * 0.35, 1.2)
+            y_min_plot = min(y_f_min - margin_y, -0.6)
+            y_max_plot = max(y_f_max + margin_y, 1.0)
 
             y_headroom = (y_max_plot - y_min_plot) * 0.12
             y_top_arrow = y_max_plot + y_headroom
@@ -187,7 +181,21 @@ with col_view:
 
             ax.grid(True, linestyle=":", alpha=0.35, color="#888888")
 
-            # Đồ thị chính
+            # Tô miền diện tích gạch sọc (H) chuẩn đề thi
+            for sub_a, sub_b in res.intervals:
+                x_fill = np.linspace(sub_a, sub_b, 250)
+                yf = np.asarray(f_num(x_fill), dtype=float)
+                yg = np.asarray(g_num(x_fill), dtype=float)
+                if yf.ndim == 0: yf = np.full_like(x_fill, yf)
+                if yg.ndim == 0: yg = np.full_like(x_fill, yg)
+
+                ax.fill_between(
+                    x_fill, yf, yg,
+                    facecolor="#edf4f9", edgecolor="#1d3557",
+                    hatch="///", linewidth=0.6, alpha=0.9
+                )
+
+            # Vẽ hai đường cong chính
             ys_f = np.asarray(f_num(xs), dtype=float)
             ys_g = np.asarray(g_num(xs), dtype=float)
             if ys_f.ndim == 0: ys_f = np.full_like(xs, ys_f)
@@ -197,54 +205,9 @@ with col_view:
             if str(g_expr) != "0":
                 ax.plot(xs, ys_g, label=rf"$y = {sp.latex(g_expr)}$", color="#ca6702", linestyle="--", linewidth=1.8)
 
-            # ĐẶC THÙ TRÒN XOAY: Vẽ đường đối xứng và Elip mặt cắt
+            # Nếu là tròn xoay: Chỉ thêm biểu tượng trục quay tinh tế trên trục Ox
             if is_volume:
-                # 1. Đường đối xứng phản chiếu qua trục hoành y = -f(x)
-                ax.plot(xs, -ys_f, color="#005f73", linestyle="--", linewidth=1.4, alpha=0.75, label=r"$y = -f(x)$")
-                if str(g_expr) != "0":
-                    ax.plot(xs, -ys_g, color="#ca6702", linestyle=":", linewidth=1.4, alpha=0.75)
-
-                # 2. Miền quét tròn xoay đối xứng 2 bên
-                for sub_a, sub_b in res.intervals:
-                    x_fill = np.linspace(sub_a, sub_b, 250)
-                    yf = np.asarray(f_num(x_fill), dtype=float)
-                    yg = np.asarray(g_num(x_fill), dtype=float)
-                    if yf.ndim == 0: yf = np.full_like(x_fill, yf)
-                    if yg.ndim == 0: yg = np.full_like(x_fill, yg)
-
-                    ax.fill_between(x_fill, yf, yg, facecolor="#edf4f9", edgecolor="#1d3557", hatch="///", linewidth=0.5, alpha=0.7)
-                    ax.fill_between(x_fill, -yf, -yg, facecolor="#edf4f9", edgecolor="#1d3557", hatch="\\\\\\", linewidth=0.5, alpha=0.45)
-
-                # 3. Vẽ các đường tròn nhìn nghiêng (Elip) tại các mốc phân hoạch
-                rx_ellipse = span * 0.035
-                for pt in set(all_x):
-                    ry = abs(float(np.asarray(f_num(pt)).item()))
-                    if ry > 0.15:
-                        # Nửa sau (khuất): nét đứt
-                        t_back = np.linspace(0, np.pi, 60)
-                        ax.plot(pt + rx_ellipse * np.cos(t_back), ry * np.sin(t_back), color="#1d3557", linestyle=":", linewidth=1.1)
-                        # Nửa trước (thấy): nét liền
-                        t_front = np.linspace(np.pi, 2 * np.pi, 60)
-                        ax.plot(pt + rx_ellipse * np.cos(t_front), ry * np.sin(t_front), color="#1d3557", linestyle="-", linewidth=1.3)
-
-                # 4. Mũi tên uốn quanh trục Ox thể hiện chiều quay
-                x_rot = x_max - span * 0.08
-                r_rot = max_abs_y * 0.4
-                t_rot = np.linspace(-0.75 * np.pi, 0.75 * np.pi, 50)
-                ax.plot(x_rot + rx_ellipse * 0.8 * np.cos(t_rot), r_rot * np.sin(t_rot), color="#d90429", linewidth=1.6)
-                ax.annotate("", xy=(x_rot + rx_ellipse * 0.8 * np.cos(0.75 * np.pi), r_rot * np.sin(0.75 * np.pi)),
-                            xytext=(x_rot + rx_ellipse * 0.8 * np.cos(0.6 * np.pi), r_rot * np.sin(0.6 * np.pi)),
-                            arrowprops=dict(arrowstyle="->", color="#d90429", lw=1.6))
-            else:
-                # Diện tích hình phẳng thông thường
-                for sub_a, sub_b in res.intervals:
-                    x_fill = np.linspace(sub_a, sub_b, 250)
-                    yf = np.asarray(f_num(x_fill), dtype=float)
-                    yg = np.asarray(g_num(x_fill), dtype=float)
-                    if yf.ndim == 0: yf = np.full_like(x_fill, yf)
-                    if yg.ndim == 0: yg = np.full_like(x_fill, yg)
-
-                    ax.fill_between(x_fill, yf, yg, facecolor="#edf4f9", edgecolor="#1d3557", hatch="///", linewidth=0.5, alpha=0.9)
+                ax.text(x_max - span * 0.1, dy * 1.5, r"$\circlearrowleft Ox$", fontsize=13, color="#d90429", weight="bold")
 
             # Gán nhãn giải tích (\sqrt{2}, -1, 2)
             exact_points = []
@@ -270,7 +233,7 @@ with col_view:
 
                 if abs(pt_num) > 0.08:
                     label_latex = sp.latex(ep)
-                    is_under = target_y < -0.1 and not is_volume
+                    is_under = target_y < -0.1
                     y_pos = dy * 1.3 if is_under else -dy * 1.5
                     va_align = "bottom" if is_under else "top"
 
@@ -292,27 +255,31 @@ with col_view:
             plt.close(fig)
 
             # ==========================================
-            # 2. DỰNG MÔ HÌNH 3D NẾU LÀ TRÒN XOAY
+            # 2. DỰNG MÔ HÌNH 3D ĐỘC LẬP KHI LÀ BÀI TOÁN TRÒN XOAY
             # ==========================================
             png_3d_data = None
             if is_volume:
-                fig_3d = plt.figure(figsize=(6.5, 4.2), dpi=120)
+                fig_3d = plt.figure(figsize=(6.5, 4.4), dpi=120)
                 ax_3d = fig_3d.add_subplot(111, projection="3d")
 
                 u_3d = np.linspace(min(all_x), max(all_x), 60)
                 v_3d = np.linspace(0, 2 * np.pi, 60)
                 U_3d, V_3d = np.meshgrid(u_3d, v_3d)
 
-                r_vals = np.abs(np.asarray(f_num(U_3d), dtype=float))
+                # Bán kính xoay R(x) = max(|f(x)|, |g(x)|)
+                rf = np.abs(np.asarray(f_num(U_3d), dtype=float))
+                rg = np.abs(np.asarray(g_num(U_3d), dtype=float))
+                r_vals = np.maximum(rf, rg)
+
                 X_3d = U_3d
                 Y_3d = r_vals * np.cos(V_3d)
                 Z_3d = r_vals * np.sin(V_3d)
 
-                ax_3d.plot_surface(X_3d, Y_3d, Z_3d, cmap="Blues", alpha=0.75, edgecolor="none")
+                ax_3d.plot_surface(X_3d, Y_3d, Z_3d, cmap="Blues", alpha=0.8, edgecolor="none")
                 ax_3d.set_xlabel("Trục Ox")
                 ax_3d.set_ylabel("Oy")
                 ax_3d.set_zlabel("Oz")
-                ax_3d.view_init(elev=25, azim=-60)
+                ax_3d.view_init(elev=20, azim=-60)
 
                 buf_3d = io.BytesIO()
                 fig_3d.savefig(buf_3d, format="png", dpi=250, bbox_inches="tight")
@@ -320,10 +287,10 @@ with col_view:
                 plt.close(fig_3d)
 
             # ==========================================
-            # 3. HIỂN THỊ TABS
+            # 3. GIAO DIỆN TABS TÁCH BIỆT RÕ RÀNG
             # ==========================================
             if is_volume:
-                tab_2d, tab_3d, tab_tikz = st.tabs(["📊 Phối cảnh 2D SGK", "🌐 Khối 3D không gian", "📋 Mã nguồn TikZ (LaTeX)"])
+                tab_2d, tab_3d, tab_tikz = st.tabs(["📊 Miền phẳng (H) chuẩn Đề thi", "🌐 Vật thể 3D tròn xoay", "📋 Mã nguồn TikZ (LaTeX)"])
             else:
                 tab_2d, tab_tikz = st.tabs(["📊 Đồ thị SGK (Vector SVG)", "📋 Mã nguồn TikZ (LaTeX)"])
 
@@ -331,16 +298,16 @@ with col_view:
                 st.image(svg_data, use_container_width=True)
                 c_btn1, c_btn2 = st.columns(2)
                 with c_btn1:
-                    st.download_button("📥 Tải ảnh SVG (Vector sắc nét)", data=svg_data, file_name="hinh_sgk.svg", mime="image/svg+xml", use_container_width=True)
+                    st.download_button("📥 Tải ảnh SVG (In đề sắc nét)", data=svg_data, file_name="hinh_de_thi.svg", mime="image/svg+xml", use_container_width=True)
                 with c_btn2:
-                    st.download_button("📥 Tải ảnh PNG (300 DPI)", data=png_data, file_name="hinh_sgk.png", mime="image/png", use_container_width=True)
+                    st.download_button("📥 Tải ảnh PNG (300 DPI)", data=png_data, file_name="hinh_de_thi.png", mime="image/png", use_container_width=True)
 
             if is_volume and png_3d_data is not None:
                 with tab_3d:
-                    st.image(png_3d_data, use_container_width=True, caption="Mô hình 3D khối tròn xoay được sinh ra khi quay quanh trục Ox")
+                    st.image(png_3d_data, use_container_width=True, caption="Vật thể 3D sinh ra khi quay miền (H) quanh trục Ox")
 
             with tab_tikz:
-                st.info("💡 Mã TikZ chuẩn SGK (đã đồng bộ hình tròn xoay / diện tích):")
+                st.info("💡 Mã TikZ vẽ miền (H) chuẩn đề thi để dán vào Word/LaTeX:")
                 st.code(tikz_code, language="latex")
 
         except Exception as e:
