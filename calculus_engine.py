@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, List, Optional, Tuple, Union
 
 import sympy as sp
@@ -38,6 +38,7 @@ class MathResult:
     numeric_value: float
     latex_str: str
     intervals: List[Tuple[float, float]]
+    exact_intervals: List[Tuple[Expr, Expr]] = field(default_factory=list)
 
     def __str__(self) -> str:
         return (
