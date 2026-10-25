@@ -12,7 +12,7 @@ from calculus_engine import CalculusGeometryEngine
 st.set_page_config(page_title="Giải tích Hình học", page_icon="📐", layout="wide")
 
 st.title("📐 Ứng dụng Giải tích: Diện tích & Thể tích tròn xoay")
-st.markdown("Hỗ trợ nghiên cứu và giảng dạy Toán học - Biên soạn bởi Thầy giáo.")
+st.markdown("Hỗ trợ nghiên cứu và giảng dạy Toán học - Biên soạn bởi Thầy giáo Nguyễn Văn Minh Hiếu - Trường THPT TRUNG PHÚ.")
 
 # Khởi tạo engine
 engine = CalculusGeometryEngine()
