@@ -148,8 +148,11 @@ with col_view:
             y_min_plot = min(y_f_min - margin_y, -0.6)
             y_max_plot = max(y_f_max + margin_y, 1.0)
 
+            # Thêm đệm 15% phía trên để mũi tên và chữ y không bao giờ đè lên số vạch cao nhất
+            y_headroom = (y_max_plot - y_min_plot) * 0.12
+            y_top_arrow = y_max_plot + y_headroom
             ax.set_xlim(x_min, x_max)
-            ax.set_ylim(y_min_plot, y_max_plot)
+            ax.set_ylim(y_min_plot, y_top_arrow)
 
             # Lọc trục Oy: loại bỏ nhãn số 0 để không bao giờ đè chữ O
             current_yticks = ax.get_yticks()
@@ -157,14 +160,14 @@ with col_view:
 
             # Mũi tên trục
             ax.plot(x_max, 0, ">k", clip_on=False, markersize=5)
-            ax.plot(0, y_max_plot, "^k", clip_on=False, markersize=5)
+            ax.plot(0, y_top_arrow, "^k", clip_on=False, markersize=5.5)
 
             # Chữ O, x, y
             dx = (x_max - x_min) * 0.02
             dy = (y_max_plot - y_min_plot) * 0.035
             ax.text(x_max, -dy * 1.4, r"$x$", fontsize=12, style="italic", ha="center")
-            ax.text(-dx * 1.8, y_max_plot, r"$y$", fontsize=12, style="italic", va="center")
-            ax.text(-dx * 1.8, -dy * 1.4, r"$O$", fontsize=11, style="italic")
+            ax.text(-dx * 1.8, y_top_arrow, r"$y$", fontsize=12, style="italic", va="center")
+            ax.text(-dx * 1.8, -dy * 1.4, r"$O$", fontsize=11, style="italic", bbox=dict(boxstyle="square,pad=0.1", facecolor="white", edgecolor="none", alpha=0.85))
 
             ax.grid(True, linestyle=":", alpha=0.35, color="#888888")
 
@@ -221,7 +224,21 @@ with col_view:
                 # Không in nhãn số tại gốc O(0,0) vì đã có chữ O
                 if abs(pt_num) > 0.08:
                     label_latex = sp.latex(ep)
-                    ax.text(pt_num, -dy * 1.4, rf"${label_latex}$", fontsize=11, ha="center", color="#111111")
+                    # ĐẢO CHIỀU THÔNG MINH: Nếu miền nằm phía dưới, đẩy nhãn lên TRÊN trục hoành
+                    is_under = target_y < -0.1
+                    y_pos = dy * 1.3 if is_under else -dy * 1.5
+                    va_align = "bottom" if is_under else "top"
+
+                    ax.text(
+                        pt_num,
+                        y_pos,
+                        rf"${label_latex}$",
+                        fontsize=11,
+                        ha="center",
+                        va=va_align,
+                        color="#111111",
+                        bbox=dict(boxstyle="square,pad=0.12", facecolor="white", edgecolor="none", alpha=0.85),
+                    )
 
             ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#e0e0e0", fontsize=9.5)
 
