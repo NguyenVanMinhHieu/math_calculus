@@ -297,3 +297,49 @@ class CalculusGeometryEngine:
             latex_str=sp.latex(total_volume),
             intervals=intervals_used,
         )
+
+    def generate_tikz(
+        self,
+        f_expr: Union[str, Expr],
+        g_expr: Union[str, Expr] = 0,
+        a: Optional[float] = None,
+        b: Optional[float] = None,
+        intervals: Optional[List[Tuple[float, float]]] = None,
+    ) -> str:
+        r"""Tự động sinh mã nguồn TikZ chuẩn LaTeX."""
+        f = self._parse_expression(f_expr)
+        g = self._parse_expression(g_expr)
+        f_tikz = str(f).replace(str(self.var), r"\x").replace("**", "^")
+        g_tikz = str(g).replace(str(self.var), r"\x").replace("**", "^")
+
+        if intervals and len(intervals) > 0:
+            all_pts = [p for inv in intervals for p in inv]
+            x_min = min(all_pts) - 1.0
+            x_max = max(all_pts) + 1.0
+        else:
+            x_min, x_max = -2.0, 3.0
+
+        shading_blocks = []
+        if intervals:
+            for sub_a, sub_b in intervals:
+                shading_blocks.append(
+                    f"    % Miền gạch chéo [{sub_a:.2f}, {sub_b:.2f}]\n"
+                    f"    \\fill[pattern=north east lines, pattern color=blue!40] "
+                    f"plot[domain={sub_a:.2f}:{sub_b:.2f}, samples=100] (\\x, {{{f_tikz}}}) -- "
+                    f"plot[domain={sub_b:.2f}:{sub_a:.2f}, samples=100] (\\x, {{{g_tikz}}}) -- cycle;"
+                )
+        shading_code = "\n".join(shading_blocks)
+
+        return (
+            "% Yêu cầu: \\usepackage{tikz} và \\usetikzlibrary{patterns}\n"
+            "\\begin{tikzpicture}[>=stealth, scale=1.0]\n"
+            f"    \\draw[->] ({x_min:.1f}, 0) -- ({x_max + 0.5:.1f}, 0) node[below] {{$x$}};\n"
+            f"    \\draw[->] (0, -1.5) -- (0, 5.0) node[left] {{$y$}};\n"
+            f"    \\node[below left] at (0, 0) {{$O$}};\n\n"
+            f"{shading_code}\n\n"
+            f"    \\draw[thick, blue, domain={x_min:.2f}:{x_max:.2f}, samples=150] "
+            f"plot (\\x, {{{f_tikz}}}) node[right] {{$y = {sp.latex(f)}$}};\n"
+            f"    \\draw[thick, orange, dashed, domain={x_min:.2f}:{x_max:.2f}, samples=150] "
+            f"plot (\\x, {{{g_tikz}}}) node[right] {{$y = {sp.latex(g)}$}};\n"
+            "\\end{tikzpicture}"
+        )
