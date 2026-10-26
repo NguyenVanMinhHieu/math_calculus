@@ -315,7 +315,7 @@ class CalculusGeometryEngine:
         exact_intervals: Optional[List[Tuple[Expr, Expr]]] = None,
         is_volume: bool = False,
     ) -> str:
-        r"""Sinh mã TikZ tổng quát: Khối tròn xoay của |f(x) - g(x)| quanh Ox."""
+        r"""Sinh mã TikZ chuẩn Sư phạm: Khối đơn hoặc phân tích phép trừ 2 khối."""
         f = self._parse_expression(f_expr)
         g = self._parse_expression(g_expr)
         f_tikz = str(f).replace(str(self.var), r"\x").replace("**", "^")
@@ -338,81 +338,49 @@ class CalculusGeometryEngine:
         x_min = x_a - span_x * 0.25
         x_max = x_b + span_x * 0.35
 
-        # Tính bán kính ngoài lớn nhất
-        sample_xs = [x_a + i * (span_x / 20.0) for i in range(21)]
-        sample_r = [max(abs(float(f.subs(self.var, sx).evalf())), abs(float(g.subs(self.var, sx).evalf()))) for sx in sample_xs]
-        max_r = max(max(sample_r) if sample_r else 1.0, 1.0)
+        fa = abs(float(f.subs(self.var, x_a).evalf()))
+        fb = abs(float(f.subs(self.var, x_b).evalf()))
+        max_r = max(fa, fb, 1.0)
 
         x_scale = round(6.5 / span_x, 2)
-        y_scale = round(2.6 / max_r, 2)
+        y_scale = round(2.8 / max_r, 2)
         rx = round(span_x * 0.045, 3)
 
-        # Tính bán kính tại a và b
-        fa, ga = abs(float(f.subs(self.var, x_a).evalf())), abs(float(g.subs(self.var, x_a).evalf()))
-        fb, gb = abs(float(f.subs(self.var, x_b).evalf())), abs(float(g.subs(self.var, x_b).evalf()))
-        r_out_a, r_in_a = max(fa, ga), min(fa, ga)
-        r_out_b, r_in_b = max(fb, gb), min(fb, gb)
-
         if is_volume:
-            # Elip ngoài và trong tại a
-            elip_a = []
-            if r_out_a > 0.1:
-                elip_a.append(f"    \\draw[thick, blue!80!black] ({x_a:.2f}, 0) ++(90:{rx} and {r_out_a:.2f}) arc (90:270:{rx} and {r_out_a:.2f});")
-                elip_a.append(f"    \\draw[dashed, blue!80!black] ({x_a:.2f}, 0) ++(-90:{rx} and {r_out_a:.2f}) arc (-90:90:{rx} and {r_out_a:.2f});")
-            if has_g and r_in_a > 0.15 and abs(r_out_a - r_in_a) > 0.1:
-                elip_a.append(f"    \\draw[dashed, thin, orange!80!black] ({x_a:.2f}, 0) ellipse ({rx * 0.7:.3f} and {r_in_a:.2f});")
-            code_elip_a = "\n".join(elip_a)
-
-            # Elip ngoài và trong tại b
-            elip_b = []
-            if r_out_b > 0.1:
-                elip_b.append(f"    \\draw[thick, blue!80!black] ({x_b:.2f}, 0) ellipse ({rx} and {r_out_b:.2f});")
-            if has_g and r_in_b > 0.15 and abs(r_out_b - r_in_b) > 0.1:
-                elip_b.append(f"    \\draw[thick, orange!80!black] ({x_b:.2f}, 0) ellipse ({rx * 0.7:.3f} and {r_in_b:.2f});")
-            code_elip_b = "\n".join(elip_b)
-
-            # Phản chiếu của g(x)
-            refl_g = f"    \\draw[dashed, orange!80!black, domain={x_a:.2f}:{x_b:.2f}, samples=100] plot (\\x, {{-({g_tikz})}});\n" if has_g else ""
-
-            return f"""% === MÃ TIKZ KHỐI TRÒN XOAY CỦA |f(x) - g(x)| QUANH Ox ===
+            return f"""% === MÃ TIKZ KHỐI TRÒN XOAY CHUẨN SÁCH GIÁO KHOA ===
 % Yêu cầu gói: \\usepackage{{tikz}} và \\usetikzlibrary{{patterns}}
 \\begin{{tikzpicture}}[xscale={x_scale}, yscale={y_scale}, >=stealth]
-    % 1. Trục hoành Ox (Đoạn trong khối vẽ nét đứt)
+    % 1. Trục Ox (Đoạn [a, b] bên trong vẽ nét đứt)
     \\draw[thick] ({x_min:.2f}, 0) -- ({x_a:.2f}, 0);
     \\draw[thick, dashed] ({x_a:.2f}, 0) -- ({x_b:.2f}, 0);
     \\draw[->, thick] ({x_b:.2f}, 0) -- ({x_max:.2f}, 0) node[below] {{$x$}};
 
-    \\fill ({x_a:.2f}, 0) circle (1.4pt) node[below=2pt] {{${label_a}$}};
-    \\fill ({x_b:.2f}, 0) circle (1.4pt) node[below=2pt] {{${label_b}$}};
+    \\fill ({x_a:.2f}, 0) circle (1.5pt) node[below=2pt] {{${label_a}$}};
+    \\fill ({x_b:.2f}, 0) circle (1.5pt) node[below=2pt] {{${label_b}$}};
 
-    % 2. Miền phẳng gốc (H) giữa f(x) và g(x) (Gạch sọc)
-    \\fill[pattern=north east lines, pattern color=magenta!75]
-        plot[domain={x_a:.2f}:{x_b:.2f}, samples=100] (\\x, {{{f_tikz}}}) --
-        plot[domain={x_b:.2f}:{x_a:.2f}, samples=100] (\\x, {{{g_tikz}}}) -- cycle;
+    % 2. Miền phẳng ban đầu gạch sọc
+    \\fill[pattern=north east lines, pattern color=magenta!80]
+        plot[domain={x_a:.2f}:{x_b:.2f}, samples=100] (\\x, {{abs({f_tikz})}}) --
+        ({x_b:.2f}, 0) -- ({x_a:.2f}, 0) -- cycle;
 
-    % 3. Miền đối xứng phản chiếu qua Ox
-    \\fill[pattern=north west lines, pattern color=blue!25]
-        plot[domain={x_a:.2f}:{x_b:.2f}, samples=100] (\\x, {{-({f_tikz})}}) --
-        plot[domain={x_b:.2f}:{x_a:.2f}, samples=100] (\\x, {{-({g_tikz})}}) -- cycle;
+    \\draw[dashed, thin, magenta!70!black] ({x_a:.2f}, 0) -- ({x_a:.2f}, {fa:.2f});
+    \\draw[dashed, thin, magenta!70!black] ({x_b:.2f}, 0) -- ({x_b:.2f}, {fb:.2f});
 
-    % 4. Các đường sinh trên và đường sinh đối xứng dưới
-    \\draw[thick, blue!85!black, domain={x_a:.2f}:{x_b:.2f}, samples=120] plot (\\x, {{{f_tikz}}}) node[right] {{$y = {sp.latex(f)}$}};
-    \\draw[dashed, blue!75!black, domain={x_a:.2f}:{x_b:.2f}, samples=120] plot (\\x, {{-({f_tikz})}});
-    \\draw[thick, orange!90!black, domain={x_a:.2f}:{x_b:.2f}, samples=120] plot (\\x, {{{g_tikz}}});
-{refl_g}
-    % 5. Các Elip mặt cắt tại a và b (Washer Ellipses)
-{code_elip_a}
-{code_elip_b}
+    % 3. Đường trên và đường đối xứng dưới
+    \\draw[thick, blue!85!black, domain={x_a:.2f}:{x_b:.2f}, samples=120] plot (\\x, {{abs({f_tikz})}});
+    \\draw[thick, blue!85!black, domain={x_a:.2f}:{x_b:.2f}, samples=120] plot (\\x, {{-abs({f_tikz})}});
+
+    % 4. Hai Elip tại a và b
+    \\draw[thick, blue!85!black] ({x_a:.2f}, 0) ++(90:{rx} and {fa:.2f}) arc (90:270:{rx} and {fa:.2f});
+    \\draw[dashed, blue!85!black] ({x_a:.2f}, 0) ++(-90:{rx} and {fa:.2f}) arc (-90:90:{rx} and {fa:.2f});
+    \\draw[thick, blue!85!black] ({x_b:.2f}, 0) ellipse ({rx} and {fb:.2f});
 \\end{{tikzpicture}}"""
         else:
-            # 2D thông thường
-            return f"""% === MÃ TIKZ MIỀN PHẲNG (H) CHUẨN ĐỀ THI ===
+            return f"""% === MÃ TIKZ MIỀN PHẲNG (H) ĐỀ THI ===
 \\begin{{tikzpicture}}[xscale={x_scale}, yscale={y_scale}, >=stealth]
     \\draw[->, thick] ({x_min:.2f}, 0) -- ({x_max:.2f}, 0) node[below] {{$x$}};
-    \\draw[->, thick] (0, {-max_r * 0.8:.2f}) -- (0, {max_r * 1.2:.2f}) node[left] {{$y$}};
+    \\draw[->, thick] (0, {-max_r * 0.6:.2f}) -- (0, {max_r * 1.2:.2f}) node[left] {{$y$}};
     \\fill[pattern=north east lines, pattern color=blue!50]
-        plot[domain={x_a:.2f}:{x_b:.2f}, samples=100] (\\x, {{{f_tikz}}}) --
-        plot[domain={x_b:.2f}:{x_a:.2f}, samples=100] (\\x, {{{g_tikz}}}) -- cycle;
+        plot[domain={x_a:.2f}:{x_b:.2f}, samples=100] (\\x, {{{f_tikz}}}) -- ({x_b:.2f}, 0) -- ({x_a:.2f}, 0) -- cycle;
     \\draw[thick, blue!80!black, domain={x_a:.2f}:{x_b:.2f}, samples=120] plot (\\x, {{{f_tikz}}});
-    \\draw[thick, orange!90!black, domain={x_a:.2f}:{x_b:.2f}, samples=120] plot (\\x, {{{g_tikz}}});
 \\end{{tikzpicture}}"""
