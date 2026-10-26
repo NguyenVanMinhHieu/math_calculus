@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học THPT - Tối ưu Bố cục: Toàn bộ Input nằm ở Sidebar."""
+"""Web App Giải tích Hình học THPT - Bản chất Sư phạm với các bước tính toán chi tiết V1, V2."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ def draw_single_revolution_solid(
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_bot, y_top_arrow * 1.08)
 
-    # 1. Trục Ox xuyên tâm (đoạn trong [a, b] nét đứt)
+    # 1. Trục Ox xuyên tâm
     ax.plot([x_min, x_a], [0, 0], color="black", linewidth=1.2)
     ax.plot([x_a, x_b], [0, 0], color="black", linestyle="--", linewidth=1.2)
     ax.plot([x_b, x_max], [0, 0], color="black", linewidth=1.2)
@@ -122,7 +122,7 @@ def draw_single_revolution_solid(
     ax.set_title(title_str, fontsize=12, pad=12, weight="bold", color="#1d3557")
 
 # ========================================================
-# TOÀN BỘ Ô NHẬP LIỆU CHUYỂN VÀO SIDEBAR BÊN TRÁI
+# SIDEBAR NHẬP LIỆU
 # ========================================================
 st.sidebar.header("⚙️ Tùy chọn bài toán")
 mode = st.sidebar.radio(
@@ -186,7 +186,7 @@ if st.sidebar.button("📌 Parabol y = 4 - x^2 và Ox"):
     st.session_state["b_val"] = 2.0
 
 # ========================================================
-# MÀN HÌNH CHÍNH (TOÀN BỘ KHÔNG GIAN DÀNH CHO HÌNH VẼ & LỜI GIẢI)
+# MÀN HÌNH CHÍNH
 # ========================================================
 title_res = "🎯 Phân tích Sư phạm Khối tròn xoay" if is_volume else "🎯 Hình phẳng chuẩn Đề thi"
 st.subheader(title_res)
@@ -215,6 +215,55 @@ if btn_calc or "has_run" in st.session_state:
         if res.exact_intervals:
             label_a = sp.latex(res.exact_intervals[0][0])
             label_b = sp.latex(res.exact_intervals[-1][1])
+
+        # ====================================================
+        # MỤC TÍNH TOÁN BẢN CHẤT SƯ PHẠM CHI TIẾT
+        # ====================================================
+        if is_volume and has_g:
+            with st.container(border=True):
+                st.markdown("### 💡 Chi tiết tính toán Bản chất Sư phạm: $V = |V_1 - V_2|$")
+
+                # 1. Tính toán chi tiết V1
+                v1_integral = sp.integrate(f_expr**2, (x_sym, sp.sympify(x_a), sp.sympify(x_b)))
+                v1_total = sp.simplify(sp.pi * v1_integral)
+                st.markdown(f"**1. Khối 1 do $y = {sp.latex(f_expr)}$ quay quanh $Ox$ trên $[{label_a}; {label_b}]$:**")
+                st.latex(
+                    rf"V_1 = \pi \int_{{{label_a}}}^{{{label_b}}} \left({sp.latex(f_expr)}\right)^2 dx "
+                    rf"= \pi \int_{{{label_a}}}^{{{label_b}}} \left({sp.latex(sp.expand(f_expr**2))}\right) dx "
+                    rf"= {sp.latex(v1_total)} \approx {float(v1_total.evalf()):.4f}"
+                )
+
+                # 2. Tính toán chi tiết V2
+                v2_integral = sp.integrate(g_expr**2, (x_sym, sp.sympify(x_a), sp.sympify(x_b)))
+                v2_total = sp.simplify(sp.pi * v2_integral)
+                st.markdown(f"**2. Khối 2 do $y = {sp.latex(g_expr)}$ quay quanh $Ox$ trên $[{label_a}; {label_b}]$:**")
+                st.latex(
+                    rf"V_2 = \pi \int_{{{label_a}}}^{{{label_b}}} \left({sp.latex(g_expr)}\right)^2 dx "
+                    rf"= \pi \int_{{{label_a}}}^{{{label_b}}} \left({sp.latex(sp.expand(g_expr**2))}\right) dx "
+                    rf"= {sp.latex(v2_total)} \approx {float(v2_total.evalf()):.4f}"
+                )
+
+                # 3. Phép trừ thể tích (Xử lý giao điểm nếu có)
+                st.markdown("**3. Kết luận thể tích khối tròn xoay (Lấy Khối 1 trừ Khối 2):**")
+                exact_sub_intervals = res.exact_intervals if res.exact_intervals else [(sp.sympify(a), sp.sympify(b)) for a, b in res.intervals]
+
+                if len(exact_sub_intervals) == 1:
+                    st.latex(
+                        rf"V = |V_1 - V_2| = \left| {sp.latex(v1_total)} - {sp.latex(v2_total)} \right| "
+                        rf"= {res.latex_str} \approx {res.numeric_value:.6f}"
+                    )
+                else:
+                    st.write("📌 *Vì hai đồ thị cắt nhau trên đoạn tính phân, ta phân rã và lấy hiệu trên từng khoảng:*")
+                    for idx_inv, (sub_a, sub_b) in enumerate(exact_sub_intervals):
+                        v1_sub = sp.simplify(sp.pi * sp.integrate(f_expr**2, (x_sym, sub_a, sub_b)))
+                        v2_sub = sp.simplify(sp.pi * sp.integrate(g_expr**2, (x_sym, sub_a, sub_b)))
+                        v_sub = sp.simplify(sp.Abs(v1_sub - v2_sub))
+                        st.latex(
+                            rf"\text{{Đoạn }} [{sp.latex(sub_a)}; {sp.latex(sub_b)}]:\quad "
+                            rf"V^{{({idx_inv + 1})}} = \left| V_1^{{({idx_inv + 1})}} - V_2^{{({idx_inv + 1})}} \right| "
+                            rf"= \left| {sp.latex(v1_sub)} - {sp.latex(v2_sub)} \right| = {sp.latex(v_sub)}"
+                        )
+                    st.latex(rf"\Rightarrow V_{{Ox}} = \sum V^{{(i)}} = {res.latex_str} \approx {res.numeric_value:.6f}")
 
         tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, exact_intervals=res.exact_intervals, is_volume=is_volume)
 
@@ -286,9 +335,6 @@ if btn_calc or "has_run" in st.session_state:
         fig.savefig(png_buffer, format="png", dpi=300, bbox_inches="tight")
         png_data = png_buffer.getvalue()
         plt.close(fig)
-
-        if is_volume and has_g:
-            st.markdown("#### 💡 Bản chất Sư phạm: $V = |V_1 - V_2|$ (Lấy Khối 1 trừ Khối 2)")
 
         tab_img, tab_tikz = st.tabs(["📊 Hình vẽ Sư phạm", "📋 Mã nguồn TikZ (LaTeX)"])
 
