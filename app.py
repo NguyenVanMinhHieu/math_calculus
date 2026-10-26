@@ -247,7 +247,7 @@ with col_view:
                         main_color="#ca6702",
                         hatch_color="#d97706",
                     )
-                    fig.suptitle(r"$\mathbf{Bản\;chất\;Sư\;phạm:\;} V = |V_1 - V_2|$ (Lấy Khối 1 trừ Khối 2)", fontsize=13, y=1.02, color="#1d3557")
+                    fig.suptitle("Bản chất Sư phạm: $V = |V_1 - V_2|$ (Lấy Khối 1 trừ Khối 2)", fontsize=13, y=1.03, color="#1d3557", weight="bold")
             else:
                 # Diện tích hình phẳng 2D
                 fig, ax = plt.subplots(figsize=(6.8, 4.4), dpi=130)
