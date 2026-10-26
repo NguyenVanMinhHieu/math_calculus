@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học THPT - Bản chất Sư phạm với các bước tính toán chi tiết V1, V2."""
+"""Web App Giải tích Hình học THPT - Tỉ lệ trục 1:1 và Thanh trượt tùy chỉnh tỷ lệ."""
 
 from __future__ import annotations
 
@@ -22,6 +22,14 @@ st.markdown("**Hỗ trợ nghiên cứu và giảng dạy Toán học - Thầy g
 
 engine = CalculusGeometryEngine()
 
+def preprocess_math_str(s: str) -> str:
+    """Tự động chuẩn hóa: 2x -> 2*x, x^3 -> x**3."""
+    if not s or s.strip() == "0":
+        return "0"
+    s = s.strip().replace("^", "**")
+    s = re.sub(r'(\d)([a-zA-Z\(])', r'\1*\2', s)
+    s = re.sub(r'(\))(\()', r'\1*\2', s)
+    return s
 
 def parse_bounds(text: str) -> tuple[float, float] | None:
     """Bóc tách chuỗi [a; b], [-1; 2], -1; 2 hoặc [0; pi] thành cặp (a, b)."""
@@ -42,15 +50,6 @@ def parse_bounds(text: str) -> tuple[float, float] | None:
             return None
     return None
 
-def preprocess_math_str(s: str) -> str:
-    """Tự động chuẩn hóa: 2x -> 2*x, x^3 -> x**3."""
-    if not s or s.strip() == "0":
-        return "0"
-    s = s.strip().replace("^", "**")
-    s = re.sub(r'(\d)([a-zA-Z\(])', r'\1*\2', s)
-    s = re.sub(r'(\))(\()', r'\1*\2', s)
-    return s
-
 def draw_single_revolution_solid(
     ax: plt.Axes,
     h_expr: sp.Expr,
@@ -62,8 +61,9 @@ def draw_single_revolution_solid(
     title_str: str,
     main_color: str = "#005f73",
     hatch_color: str = "#c2185b",
+    aspect_ratio: float = 1.0,
 ) -> None:
-    """Dựng khối tròn xoay chuẩn SGK: Giữ nguyên âm/dương hàm gốc, đối xứng qua Ox và vẽ 2 Elip."""
+    """Dựng khối tròn xoay chuẩn SGK có hỗ trợ tùy chỉnh tỉ lệ trục."""
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
@@ -89,6 +89,7 @@ def draw_single_revolution_solid(
 
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_bot, y_top_arrow * 1.08)
+    ax.set_aspect(aspect_ratio)
 
     # 1. Trục Ox xuyên tâm
     ax.plot([x_min, x_a], [0, 0], color="black", linewidth=1.2)
@@ -142,7 +143,7 @@ def draw_single_revolution_solid(
     ax.set_title(title_str, fontsize=12, pad=12, weight="bold", color="#1d3557")
 
 # ========================================================
-# SIDEBAR NHẬP LIỆU
+# SIDEBAR NHẬP LIỆU & THANH TỈ LỆ 1:1
 # ========================================================
 st.sidebar.header("⚙️ Tùy chọn bài toán")
 mode = st.sidebar.radio(
@@ -160,10 +161,8 @@ if "g_input" not in st.session_state:
     st.session_state["g_input"] = "2*x"
 if "use_bounds" not in st.session_state:
     st.session_state["use_bounds"] = True
-if "a_val" not in st.session_state:
-    st.session_state["a_val"] = -1.0
-if "b_val" not in st.session_state:
-    st.session_state["b_val"] = 2.0
+if "bounds_input" not in st.session_state:
+    st.session_state["bounds_input"] = "[-1; 2]"
 
 f_raw = st.sidebar.text_input("Hàm số f(x):", value=st.session_state["f_input"])
 g_raw = st.sidebar.text_input("Hàm số g(x) (trục hoành đặt là 0):", value=st.session_state["g_input"])
@@ -184,7 +183,7 @@ b_val: float | None = None
 if use_custom_bounds:
     bounds_raw = st.sidebar.text_input(
         "[a; b] =",
-        value=st.session_state.get("bounds_input", "[-1; 2]"),
+        value=st.session_state["bounds_input"],
         placeholder="[-1; 2]",
         help="Nhập dạng [-1; 2] hoặc biểu thức như [0; pi], [-sqrt(3); 2]",
     )
@@ -194,6 +193,18 @@ if use_custom_bounds:
         a_val, b_val = parsed
     else:
         st.sidebar.error("Định dạng: [a; b], ví dụ: [-1; 2]")
+
+# THANH TRƯỢT TỈ LỆ TRỤC CHO GIÁO VIÊN TÙY CHỌN (MẶC ĐỊNH 1:1)
+st.sidebar.markdown("---")
+st.sidebar.subheader("📐 Tỉ lệ trục tọa độ")
+axis_ratio = st.sidebar.slider(
+    "Tỉ lệ (độ giãn trục y so với x):",
+    min_value=0.2,
+    max_value=3.0,
+    value=1.0,  # Mặc định 1:1 chuẩn xác theo yêu cầu của Thầy
+    step=0.1,
+    help="1.0: Tỉ lệ chuẩn 1:1 (1 đơn vị trên trục x bằng đúng 1 đơn vị trên trục y). Kéo để tùy chỉnh độ dẹt hoặc cao của đồ thị.",
+)
 
 btn_calc = st.sidebar.button("🚀 Bắt đầu tính toán & Dựng hình", type="primary", use_container_width=True)
 
@@ -241,16 +252,14 @@ if btn_calc or "has_run" in st.session_state:
             label_a = sp.latex(res.exact_intervals[0][0])
             label_b = sp.latex(res.exact_intervals[-1][1])
 
-        # ====================================================
-        # MỤC TÍNH TOÁN BẢN CHẤT SƯ PHẠM CHI TIẾT
-        # ====================================================
+        # Chi tiết tính toán Bản chất Sư phạm
         if is_volume and has_g:
             with st.container(border=True):
                 st.markdown("### 💡 Chi tiết tính toán Bản chất Sư phạm: $V = |V_1 - V_2|$")
 
-                # 1. Tính toán chi tiết V1 (chuẩn hóa phân số tối giản)
                 sym_a = sp.nsimplify(x_a, rational=True)
                 sym_b = sp.nsimplify(x_b, rational=True)
+
                 v1_integral = sp.integrate(f_expr**2, (x_sym, sym_a, sym_b))
                 v1_total = sp.simplify(sp.pi * v1_integral)
                 st.markdown(f"**1. Khối 1 do $y = {sp.latex(f_expr)}$ quay quanh $Ox$ trên $[{label_a}; {label_b}]$:**")
@@ -260,7 +269,6 @@ if btn_calc or "has_run" in st.session_state:
                     rf"= {sp.latex(v1_total)} \approx {float(v1_total.evalf()):.4f}"
                 )
 
-                # 2. Tính toán chi tiết V2
                 v2_integral = sp.integrate(g_expr**2, (x_sym, sym_a, sym_b))
                 v2_total = sp.simplify(sp.pi * v2_integral)
                 st.markdown(f"**2. Khối 2 do $y = {sp.latex(g_expr)}$ quay quanh $Ox$ trên $[{label_a}; {label_b}]$:**")
@@ -270,7 +278,6 @@ if btn_calc or "has_run" in st.session_state:
                     rf"= {sp.latex(v2_total)} \approx {float(v2_total.evalf()):.4f}"
                 )
 
-                # 3. Phép trừ thể tích (Xử lý giao điểm nếu có)
                 st.markdown("**3. Kết luận thể tích khối tròn xoay (Lấy Khối 1 trừ Khối 2):**")
                 exact_sub_intervals = res.exact_intervals if res.exact_intervals else [(sp.sympify(a), sp.sympify(b)) for a, b in res.intervals]
 
@@ -294,10 +301,10 @@ if btn_calc or "has_run" in st.session_state:
 
         tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, exact_intervals=res.exact_intervals, is_volume=is_volume)
 
-        # DỰNG HÌNH FULL-WIDTH TO RÕ
+        # DỰNG HÌNH THEO TỈ LỆ ĐƯỢC CHỌN
         if is_volume:
             if not has_g:
-                fig, ax = plt.subplots(figsize=(8.5, 4.8), dpi=130)
+                fig, ax = plt.subplots(figsize=(8.5, 5.0), dpi=130)
                 draw_single_revolution_solid(
                     ax=ax,
                     h_expr=f_expr,
@@ -309,9 +316,10 @@ if btn_calc or "has_run" in st.session_state:
                     title_str=rf"Khối tròn xoay do $y = {sp.latex(f_expr)}$ quay quanh $Ox$",
                     main_color="#005f73",
                     hatch_color="#c2185b",
+                    aspect_ratio=axis_ratio,
                 )
             else:
-                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.5, 4.6), dpi=130)
+                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.5, 4.8), dpi=130)
                 draw_single_revolution_solid(
                     ax=ax1,
                     h_expr=f_expr,
@@ -323,6 +331,7 @@ if btn_calc or "has_run" in st.session_state:
                     title_str=rf"(1) Khối $V_1$ do $y = {sp.latex(f_expr)}$ quay",
                     main_color="#005f73",
                     hatch_color="#c2185b",
+                    aspect_ratio=axis_ratio,
                 )
                 draw_single_revolution_solid(
                     ax=ax2,
@@ -335,24 +344,57 @@ if btn_calc or "has_run" in st.session_state:
                     title_str=rf"(2) Khối $V_2$ do $y = {sp.latex(g_expr)}$ quay",
                     main_color="#ca6702",
                     hatch_color="#d97706",
+                    aspect_ratio=axis_ratio,
                 )
                 fig.subplots_adjust(top=0.88, wspace=0.22)
         else:
-            fig, ax = plt.subplots(figsize=(8.5, 4.8), dpi=130)
+            # DIỆN TÍCH HÌNH PHẲNG CHUẨN TỈ LỆ 1:1
+            f_n = sp.lambdify(x_sym, f_expr, "numpy")
+            g_n = sp.lambdify(x_sym, g_expr, "numpy")
+            span_x = max(x_b - x_a, 1.0)
+            margin_x = span_x * 0.25
+            xs_2d = np.linspace(x_a - margin_x, x_b + margin_x, 400)
+            yf = np.asarray(f_n(xs_2d), dtype=float)
+            yg = np.asarray(g_n(xs_2d), dtype=float)
+
+            # Tính toán chiều cao figure linh hoạt theo tỉ lệ
+            fig, ax = plt.subplots(figsize=(8.5, 5.2), dpi=130)
             ax.spines["left"].set_position(("data", 0))
             ax.spines["bottom"].set_position(("data", 0))
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
-            xs_2d = np.linspace(x_a, x_b, 300)
-            f_n = sp.lambdify(x_sym, f_expr, "numpy")
-            g_n = sp.lambdify(x_sym, g_expr, "numpy")
-            yf = np.asarray(f_n(xs_2d), dtype=float)
-            yg = np.asarray(g_n(xs_2d), dtype=float)
+            ax.spines["left"].set_linewidth(1.2)
+            ax.spines["bottom"].set_linewidth(1.2)
+
+            # Áp dụng tỉ lệ 1:1 hoặc theo thanh trượt
+            ax.set_aspect(axis_ratio)
+
+            # Vẽ hai đường cong
             ax.plot(xs_2d, yf, color="#005f73", linewidth=2.0, label=rf"$y = {sp.latex(f_expr)}$")
             if has_g:
                 ax.plot(xs_2d, yg, color="#ca6702", linestyle="--", linewidth=1.8, label=rf"$y = {sp.latex(g_expr)}$")
-            ax.fill_between(xs_2d, yf, yg, facecolor="#edf4f9", edgecolor="#1d3557", hatch="///", alpha=0.85)
-            ax.legend(loc="upper left")
+
+            # Tô miền diện tích tích phân
+            xs_fill = np.linspace(x_a, x_b, 300)
+            yf_fill = np.asarray(f_n(xs_fill), dtype=float)
+            yg_fill = np.asarray(g_n(xs_fill), dtype=float)
+            ax.fill_between(xs_fill, yf_fill, yg_fill, facecolor="#edf4f9", edgecolor="#1d3557", hatch="///", linewidth=0.6, alpha=0.9)
+
+            # Hai đường dóng thẳng đứng khép góc tại a và b
+            ax.plot([x_a, x_a], [yf_fill[0], yg_fill[0]], color="#1d3557", linestyle="-", linewidth=1.2)
+            ax.plot([x_b, x_b], [yf_fill[-1], yg_fill[-1]], color="#1d3557", linestyle="-", linewidth=1.2)
+
+            # Mũi tên trục Ox và Oy
+            x_max_arrow = x_b + margin_x
+            y_max_arrow = max(np.max(yf), np.max(yg)) * 1.15
+            ax.plot(x_max_arrow, 0, ">k", clip_on=False, markersize=5)
+            ax.plot(0, y_max_arrow, "^k", clip_on=False, markersize=5)
+
+            ax.text(x_max_arrow, -0.25 * axis_ratio, r"$x$", fontsize=11, style="italic")
+            ax.text(-0.25, y_max_arrow, r"$y$", fontsize=11, style="italic", va="center")
+            ax.text(-0.25, -0.25 * axis_ratio, r"$O$", fontsize=10, style="italic")
+
+            ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#cccccc", fontsize=9.5)
 
         svg_buffer = io.StringIO()
         fig.savefig(svg_buffer, format="svg", bbox_inches="tight")
@@ -369,9 +411,9 @@ if btn_calc or "has_run" in st.session_state:
             st.image(svg_data, use_container_width=True)
             c_btn1, c_btn2 = st.columns(2)
             with c_btn1:
-                st.download_button("📥 Tải ảnh SVG (Vector sắc nét)", data=svg_data, file_name="khoi_tron_xoay_su_pham.svg", mime="image/svg+xml", use_container_width=True)
+                st.download_button("📥 Tải ảnh SVG (Vector sắc nét)", data=svg_data, file_name="hinh_su_pham.svg", mime="image/svg+xml", use_container_width=True)
             with c_btn2:
-                st.download_button("📥 Tải ảnh PNG (300 DPI)", data=png_data, file_name="khoi_tron_xoay_su_pham.png", mime="image/png", use_container_width=True)
+                st.download_button("📥 Tải ảnh PNG (300 DPI)", data=png_data, file_name="hinh_su_pham.png", mime="image/png", use_container_width=True)
 
         with tab_tikz:
             st.info("💡 Mã TikZ chuẩn SGK để Thầy copy vào đề thi:")
