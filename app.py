@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học THPT - Tỉ lệ trục 1:1 và Thanh trượt tùy chỉnh tỷ lệ."""
+"""Web App Giải tích Hình học THPT - Nhãn tỉ lệ x:y bên phải và Ô điều chỉnh đơn vị vẽ."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def draw_single_revolution_solid(
     hatch_color: str = "#c2185b",
     aspect_ratio: float = 1.0,
 ) -> None:
-    """Dựng khối tròn xoay chuẩn SGK có hỗ trợ tùy chỉnh tỉ lệ trục."""
+    """Dựng khối tròn xoay chuẩn SGK có nhãn tỉ lệ x:y bên phải."""
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
@@ -140,10 +140,23 @@ def draw_single_revolution_solid(
         t_full = np.linspace(0, 2 * np.pi, 120)
         ax.plot(x_b + rx * np.cos(t_full), r_b * np.sin(t_full), color=main_color, linestyle="-", linewidth=1.8)
 
+    # 6. NHÃN TỈ LỆ x:y BÊN PHẢI HÌNH VẼ
+    scale_str = "x : y = 1 : 1" if abs(aspect_ratio - 1.0) < 1e-4 else f"x : y = 1 : {aspect_ratio:g}"
+    ax.text(
+        0.96, 0.94, scale_str,
+        transform=ax.transAxes,
+        fontsize=10.5,
+        ha="right",
+        va="top",
+        weight="bold",
+        color="#1d3557",
+        bbox=dict(boxstyle="square,pad=0.25", facecolor="#f8f9fa", edgecolor="#b0bec5", alpha=0.92)
+    )
+
     ax.set_title(title_str, fontsize=12, pad=12, weight="bold", color="#1d3557")
 
 # ========================================================
-# SIDEBAR NHẬP LIỆU & THANH TỈ LỆ 1:1
+# SIDEBAR NHẬP LIỆU & ĐIỀU CHỈNH TỈ LỆ ĐƠN VỊ VẼ
 # ========================================================
 st.sidebar.header("⚙️ Tùy chọn bài toán")
 mode = st.sidebar.radio(
@@ -194,8 +207,18 @@ if use_custom_bounds:
     else:
         st.sidebar.error("Định dạng: [a; b], ví dụ: [-1; 2]")
 
-# CỐ ĐỊNH CHUẨN TỈ LỆ 1:1 CHO HAI TRỤC (KHÔNG DÙNG THANH TRƯỢT)
-axis_ratio: float = 1.0
+# ĐIỀU CHỈNH TỈ LỆ ĐƠN VỊ VẼ HÌNH (DÙNG Ô NHẬP SỐ CHÍNH XÁC, MẶC ĐỊNH 1.0)
+st.sidebar.markdown("---")
+st.sidebar.subheader("📐 Tỉ lệ đơn vị vẽ hình")
+axis_ratio = st.sidebar.number_input(
+    "Tỉ lệ trục y (so với x):",
+    min_value=0.1,
+    max_value=10.0,
+    value=1.00,  # Mặc định chuẩn 1:1 theo ý Thầy
+    step=0.1,
+    format="%.2f",
+    help="Mặc định là 1.00 (Tỉ lệ chuẩn x:y = 1:1). Giáo viên có thể điều chỉnh để tăng/giảm tỉ lệ vẽ theo ý muốn.",
+)
 
 btn_calc = st.sidebar.button("🚀 Bắt đầu tính toán & Dựng hình", type="primary", use_container_width=True)
 
@@ -292,7 +315,7 @@ if btn_calc or "has_run" in st.session_state:
 
         tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, exact_intervals=res.exact_intervals, is_volume=is_volume)
 
-        # DỰNG HÌNH THEO TỈ LỆ ĐƯỢC CHỌN
+        # DỰNG HÌNH VỚI NHÃN TỈ LỆ x : y BÊN PHẢI
         if is_volume:
             if not has_g:
                 fig, ax = plt.subplots(figsize=(8.5, 5.0), dpi=130)
@@ -339,7 +362,7 @@ if btn_calc or "has_run" in st.session_state:
                 )
                 fig.subplots_adjust(top=0.88, wspace=0.22)
         else:
-            # DIỆN TÍCH HÌNH PHẲNG CHUẨN TỈ LỆ 1:1
+            # DIỆN TÍCH HÌNH PHẲNG VỚI NHÃN TỈ LỆ BÊN PHẢI
             f_n = sp.lambdify(x_sym, f_expr, "numpy")
             g_n = sp.lambdify(x_sym, g_expr, "numpy")
             span_x = max(x_b - x_a, 1.0)
@@ -348,7 +371,6 @@ if btn_calc or "has_run" in st.session_state:
             yf = np.asarray(f_n(xs_2d), dtype=float)
             yg = np.asarray(g_n(xs_2d), dtype=float)
 
-            # Tính toán chiều cao figure linh hoạt theo tỉ lệ
             fig, ax = plt.subplots(figsize=(8.5, 5.2), dpi=130)
             ax.spines["left"].set_position(("data", 0))
             ax.spines["bottom"].set_position(("data", 0))
@@ -357,7 +379,6 @@ if btn_calc or "has_run" in st.session_state:
             ax.spines["left"].set_linewidth(1.2)
             ax.spines["bottom"].set_linewidth(1.2)
 
-            # Áp dụng tỉ lệ 1:1 hoặc theo thanh trượt
             ax.set_aspect(axis_ratio)
 
             # Vẽ hai đường cong
@@ -384,6 +405,19 @@ if btn_calc or "has_run" in st.session_state:
             ax.text(x_max_arrow, -0.25 * axis_ratio, r"$x$", fontsize=11, style="italic")
             ax.text(-0.25, y_max_arrow, r"$y$", fontsize=11, style="italic", va="center")
             ax.text(-0.25, -0.25 * axis_ratio, r"$O$", fontsize=10, style="italic")
+
+            # NHÃN TỈ LỆ x:y BÊN PHẢI HÌNH VẼ
+            scale_str = "x : y = 1 : 1" if abs(axis_ratio - 1.0) < 1e-4 else f"x : y = 1 : {axis_ratio:g}"
+            ax.text(
+                0.96, 0.94, scale_str,
+                transform=ax.transAxes,
+                fontsize=11,
+                ha="right",
+                va="top",
+                weight="bold",
+                color="#1d3557",
+                bbox=dict(boxstyle="square,pad=0.25", facecolor="#f8f9fa", edgecolor="#b0bec5", alpha=0.92)
+            )
 
             ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#cccccc", fontsize=9.5)
 
