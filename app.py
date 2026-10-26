@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học THPT - Mô hình hóa Tổng quát Phép trừ 2 Khối tròn xoay."""
+"""Web App Giải tích Hình học THPT - Khối tròn xoay chuẩn mực Toán học & Sư phạm."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def draw_single_revolution_solid(
     main_color: str = "#005f73",
     hatch_color: str = "#c2185b",
 ) -> None:
-    """Dựng một khối tròn xoay đơn chuẩn SGK (Đối xứng qua Ox + 2 Elip tại a, b)."""
+    """Dựng khối tròn xoay chuẩn xác: Giữ nguyên âm/dương của hàm gốc, lấy đối xứng qua Ox và vẽ 2 Elip."""
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
@@ -56,68 +56,76 @@ def draw_single_revolution_solid(
     x_min = x_a - span * 0.25
     x_max = x_b + span * 0.35
 
-    xs = np.linspace(x_a, x_b, 300)
-    ys_top = np.abs(np.asarray(h_num(xs), dtype=float))
-    if ys_top.ndim == 0:
-        ys_top = np.full_like(xs, ys_top)
-    ys_bot = -ys_top
+    xs = np.linspace(x_a, x_b, 350)
+    # GIỮ NGUYÊN DẤU THỰC TẾ CỦA HÀM SỐ (Không dùng np.abs bừa bãi)
+    ys_real = np.asarray(h_num(xs), dtype=float)
+    if ys_real.ndim == 0:
+        ys_real = np.full_like(xs, ys_real)
+    ys_refl = -ys_real  # Đường đối xứng gương qua trục Ox
 
-    max_r = max(np.max(ys_top), 1.0)
-    y_lim = max_r * 1.45
+    max_r = max(np.max(np.abs(ys_real)), 1.0)
+    # Tăng lề trên và dưới để trục Oy không bao giờ bị cắt cụt đầu
+    y_lim = max_r * 1.25
+    y_top_arrow = y_lim * 1.15
+    y_bot = -y_lim * 1.15
+
     ax.set_xlim(x_min, x_max)
-    ax.set_ylim(-y_lim, y_lim)
+    ax.set_ylim(y_bot, y_top_arrow * 1.08)
 
-    # 1. Trục Ox (Đoạn [a, b] bên trong nét đứt)
+    # 1. TRỤC HOÀNH OX XUYÊN TÂM (Đoạn [a, b] bên trong vẽ nét đứt)
     ax.plot([x_min, x_a], [0, 0], color="black", linewidth=1.2)
     ax.plot([x_a, x_b], [0, 0], color="black", linestyle="--", linewidth=1.2)
     ax.plot([x_b, x_max], [0, 0], color="black", linewidth=1.2)
     ax.plot(x_max, 0, ">k", clip_on=False, markersize=5)
-    ax.text(x_max, -y_lim * 0.08, r"$x$", fontsize=11, style="italic")
-
-    # Bổ sung trục tung Oy và gốc tọa độ O
-    if x_min <= 0 <= x_max:
-        y_top_arrow = y_lim * 1.05
-        ax.plot([0, 0], [-y_lim * 0.85, y_top_arrow], color="black", linewidth=1.2)
-        ax.plot(0, y_top_arrow, "^k", clip_on=False, markersize=5)
-        dx = span * 0.02
-        ax.text(-dx * 1.6, y_top_arrow, r"$y$", fontsize=11, style="italic", va="center")
-        ax.text(-dx * 1.8, -y_lim * 0.12, r"$O$", fontsize=10, style="italic",
-                bbox=dict(boxstyle="square,pad=0.08", facecolor="white", edgecolor="none", alpha=0.85))
+    ax.text(x_max, -y_lim * 0.09, r"$x$", fontsize=11, style="italic")
 
     # Điểm mốc a và b
     ax.plot(x_a, 0, "ko", markersize=4.0)
     ax.plot(x_b, 0, "ko", markersize=4.0)
-    ax.text(x_a, -y_lim * 0.16, rf"${label_a}$", fontsize=11, ha="center")
-    ax.text(x_b, -y_lim * 0.16, rf"${label_b}$", fontsize=11, ha="center")
+    ax.text(x_a, -y_lim * 0.18, rf"${label_a}$", fontsize=11, ha="center")
+    ax.text(x_b, -y_lim * 0.18, rf"${label_b}$", fontsize=11, ha="center")
 
-    # 2. Miền phẳng gốc quay quanh Ox (Gạch sọc)
-    ax.fill_between(xs, ys_top, 0, facecolor="#fce4ec", edgecolor=hatch_color, hatch="///", linewidth=0.6, alpha=0.9)
+    # 2. TRỤC TUNG OY VÀ GỐC O (Thoáng đãng, không bị cắt chóp)
+    if x_min <= 0 <= x_max:
+        ax.plot([0, 0], [-y_lim * 0.95, y_top_arrow], color="black", linewidth=1.2)
+        ax.plot(0, y_top_arrow, "^k", clip_on=False, markersize=5)
+        dx = span * 0.02
+        ax.text(-dx * 1.6, y_top_arrow, r"$y$", fontsize=11, style="italic", va="center")
+        ax.text(-dx * 1.8, -y_lim * 0.14, r"$O$", fontsize=10, style="italic",
+                bbox=dict(boxstyle="square,pad=0.08", facecolor="white", edgecolor="none", alpha=0.85))
 
-    # Đoạn dóng thẳng đứng tại a và b
-    fa = float(ys_top[0])
-    fb = float(ys_top[-1])
-    ax.plot([x_a, x_a], [0, fa], color=hatch_color, linestyle="--", linewidth=1.1)
-    ax.plot([x_b, x_b], [0, fb], color=hatch_color, linestyle="--", linewidth=1.1)
+    # 3. MIỀN PHẲNG GỐC CẦN QUAY: Gạch sọc giữa đồ thị gốc h(x) và trục Ox
+    # Nhánh âm ở dưới Ox, nhánh dương ở trên Ox chuẩn xác 100%!
+    ax.fill_between(xs, ys_real, 0, facecolor="#fce4ec", edgecolor=hatch_color, hatch="///", linewidth=0.6, alpha=0.9)
 
-    # 3. Đường trên h(x) và đường đối xứng dưới -h(x)
-    ax.plot(xs, ys_top, color=main_color, linewidth=2.0)
-    ax.plot(xs, ys_bot, color=main_color, linewidth=2.0)
+    # Hai đoạn dóng thẳng đứng tại a và b
+    ha = float(ys_real[0])
+    hb = float(ys_real[-1])
+    ax.plot([x_a, x_a], [0, ha], color=hatch_color, linestyle="--", linewidth=1.1)
+    ax.plot([x_b, x_b], [0, hb], color=hatch_color, linestyle="--", linewidth=1.1)
 
-    # 4. Hai Elip khép kín chuẩn tại a và b
+    # 4. ĐƯỜNG ĐỒ THỊ GỐC VÀ ĐƯỜNG ĐỐI XỨNG PHẢN CHIẾU QUA OX
+    ax.plot(xs, ys_real, color=main_color, linewidth=2.0, label=r"Đồ thị gốc")
+    ax.plot(xs, ys_refl, color=main_color, linestyle="--", linewidth=1.5, alpha=0.75, label=r"Đối xứng qua $Ox$")
+
+    # 5. HAI ELIP MẶT CẮT TRÒN XOAY TẠI a VÀ b
     rx = span * 0.045
+    r_a = abs(ha)
+    r_b = abs(hb)
+
     # Tại a: Nửa sau nét đứt, nửa ngoài nét liền
-    if fa > 0.08:
+    if r_a > 0.06:
         t_in = np.linspace(-np.pi / 2, np.pi / 2, 60)
         t_out = np.linspace(np.pi / 2, 3 * np.pi / 2, 60)
-        ax.plot(x_a + rx * np.cos(t_in), fa * np.sin(t_in), color=main_color, linestyle="--", linewidth=1.1)
-        ax.plot(x_a + rx * np.cos(t_out), fa * np.sin(t_out), color=main_color, linestyle="-", linewidth=1.8)
+        ax.plot(x_a + rx * np.cos(t_in), r_a * np.sin(t_in), color=main_color, linestyle="--", linewidth=1.1)
+        ax.plot(x_a + rx * np.cos(t_out), r_a * np.sin(t_out), color=main_color, linestyle="-", linewidth=1.8)
 
     # Tại b: Toàn bộ Elip nét liền
-    if fb > 0.08:
+    if r_b > 0.06:
         t_full = np.linspace(0, 2 * np.pi, 120)
-        ax.plot(x_b + rx * np.cos(t_full), fb * np.sin(t_full), color=main_color, linestyle="-", linewidth=1.8)
+        ax.plot(x_b + rx * np.cos(t_full), r_b * np.sin(t_full), color=main_color, linestyle="-", linewidth=1.8)
 
-    ax.set_title(title_str, fontsize=12, pad=10, weight="bold", color="#1d3557")
+    ax.set_title(title_str, fontsize=12, pad=12, weight="bold", color="#1d3557")
 
 st.sidebar.header("⚙️ Tùy chọn bài toán")
 mode = st.sidebar.radio(
@@ -216,8 +224,7 @@ with col_view:
             # ====================================================
             if is_volume:
                 if not has_g:
-                    # TRƯỜNG HỢP 1: 1 hàm cong duy nhất quanh Ox (Khối đơn chuẩn SGK)
-                    fig, ax = plt.subplots(figsize=(6.8, 4.4), dpi=130)
+                    fig, ax = plt.subplots(figsize=(7.0, 4.6), dpi=130)
                     draw_single_revolution_solid(
                         ax=ax,
                         h_expr=f_expr,
@@ -231,8 +238,7 @@ with col_view:
                         hatch_color="#c2185b",
                     )
                 else:
-                    # TRƯỜNG HỢP 2: 2 hàm cong -> Phân tích thành phép trừ 2 khối trực quan!
-                    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.2), dpi=130)
+                    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.5, 4.4), dpi=130)
                     draw_single_revolution_solid(
                         ax=ax1,
                         h_expr=f_expr,
@@ -257,9 +263,8 @@ with col_view:
                         main_color="#ca6702",
                         hatch_color="#d97706",
                     )
-                    fig.suptitle("Bản chất Sư phạm: $V = |V_1 - V_2|$ (Lấy Khối 1 trừ Khối 2)", fontsize=13, y=1.03, color="#1d3557", weight="bold")
+                    fig.subplots_adjust(top=0.88, wspace=0.25)
             else:
-                # Diện tích hình phẳng 2D
                 fig, ax = plt.subplots(figsize=(6.8, 4.4), dpi=130)
                 ax.spines["left"].set_position(("data", 0))
                 ax.spines["bottom"].set_position(("data", 0))
@@ -285,13 +290,14 @@ with col_view:
             png_data = png_buffer.getvalue()
             plt.close(fig)
 
-            # Tabs hiển thị
+            # Hiển thị trên Streamlit
+            if is_volume and has_g:
+                st.markdown("#### 💡 Bản chất Sư phạm: $V = |V_1 - V_2|$ (Lấy Khối 1 trừ Khối 2)")
+
             tab_img, tab_tikz = st.tabs(["📊 Hình vẽ Sư phạm", "📋 Mã nguồn TikZ (LaTeX)"])
 
             with tab_img:
                 st.image(svg_data, use_container_width=True)
-                if is_volume and has_g:
-                    st.info("💡 **Giải thích sư phạm:** Thể tích phần rỗng được tạo thành bằng cách lấy **Khối $V_1$ (do $f$ quay)** trừ đi **Khối $V_2$ (do $g$ quay)**: $V = |V_1 - V_2|$.")
                 c_btn1, c_btn2 = st.columns(2)
                 with c_btn1:
                     st.download_button("📥 Tải ảnh SVG (Vector sắc nét)", data=svg_data, file_name="khoi_tron_xoay_su_pham.svg", mime="image/svg+xml", use_container_width=True)
