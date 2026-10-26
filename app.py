@@ -194,17 +194,8 @@ if use_custom_bounds:
     else:
         st.sidebar.error("Định dạng: [a; b], ví dụ: [-1; 2]")
 
-# THANH TRƯỢT TỈ LỆ TRỤC CHO GIÁO VIÊN TÙY CHỌN (MẶC ĐỊNH 1:1)
-st.sidebar.markdown("---")
-st.sidebar.subheader("📐 Tỉ lệ trục tọa độ")
-axis_ratio = st.sidebar.slider(
-    "Tỉ lệ (độ giãn trục y so với x):",
-    min_value=0.2,
-    max_value=3.0,
-    value=1.0,  # Mặc định 1:1 chuẩn xác theo yêu cầu của Thầy
-    step=0.1,
-    help="1.0: Tỉ lệ chuẩn 1:1 (1 đơn vị trên trục x bằng đúng 1 đơn vị trên trục y). Kéo để tùy chỉnh độ dẹt hoặc cao của đồ thị.",
-)
+# CỐ ĐỊNH CHUẨN TỈ LỆ 1:1 CHO HAI TRỤC (KHÔNG DÙNG THANH TRƯỢT)
+axis_ratio: float = 1.0
 
 btn_calc = st.sidebar.button("🚀 Bắt đầu tính toán & Dựng hình", type="primary", use_container_width=True)
 
