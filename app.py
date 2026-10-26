@@ -22,6 +22,26 @@ st.markdown("**Hỗ trợ nghiên cứu và giảng dạy Toán học - Thầy g
 
 engine = CalculusGeometryEngine()
 
+
+def parse_bounds(text: str) -> tuple[float, float] | None:
+    """Bóc tách chuỗi [a; b], [-1; 2], -1; 2 hoặc [0; pi] thành cặp (a, b)."""
+    if not text:
+        return None
+    cleaned = text.strip().strip("[]()")
+    parts = [p.strip() for p in re.split(r"[;,]", cleaned) if p.strip()]
+    if len(parts) == 2:
+        try:
+            ea = engine._parse_expression(preprocess_math_str(parts[0]))
+            eb = engine._parse_expression(preprocess_math_str(parts[1]))
+            va = float(ea.evalf())
+            vb = float(eb.evalf())
+            if va > vb:
+                va, vb = vb, va
+            return va, vb
+        except Exception:
+            return None
+    return None
+
 def preprocess_math_str(s: str) -> str:
     """Tự động chuẩn hóa: 2x -> 2*x, x^3 -> x**3."""
     if not s or s.strip() == "0":
@@ -157,16 +177,23 @@ try:
 except Exception:
     f_clean, g_clean = f_raw, g_raw
 
-use_custom_bounds = st.sidebar.checkbox("Chỉ định cận [a, b] thủ công", value=st.session_state["use_bounds"])
+use_custom_bounds = st.sidebar.checkbox("Chỉ định cận [a; b]", value=st.session_state["use_bounds"])
 a_val: float | None = None
 b_val: float | None = None
 
 if use_custom_bounds:
-    c1, c2 = st.sidebar.columns(2)
-    with c1:
-        a_val = st.number_input("Cận dưới (a):", value=float(st.session_state["a_val"]))
-    with c2:
-        b_val = st.number_input("Cận trên (b):", value=float(st.session_state["b_val"]))
+    bounds_raw = st.sidebar.text_input(
+        "[a; b] =",
+        value=st.session_state.get("bounds_input", "[-1; 2]"),
+        placeholder="[-1; 2]",
+        help="Nhập dạng [-1; 2] hoặc biểu thức như [0; pi], [-sqrt(3); 2]",
+    )
+    st.session_state["bounds_input"] = bounds_raw
+    parsed = parse_bounds(bounds_raw)
+    if parsed:
+        a_val, b_val = parsed
+    else:
+        st.sidebar.error("Định dạng: [a; b], ví dụ: [-1; 2]")
 
 btn_calc = st.sidebar.button("🚀 Bắt đầu tính toán & Dựng hình", type="primary", use_container_width=True)
 
@@ -176,14 +203,12 @@ if st.sidebar.button("📌 y = x^3 - 5x và y = 2x"):
     st.session_state["f_input"] = "x^3 - 5*x"
     st.session_state["g_input"] = "2*x"
     st.session_state["use_bounds"] = True
-    st.session_state["a_val"] = -1.0
-    st.session_state["b_val"] = 2.0
+    st.session_state["bounds_input"] = "[-1; 2]"
 if st.sidebar.button("📌 Parabol y = 4 - x^2 và Ox"):
     st.session_state["f_input"] = "4 - x^2"
     st.session_state["g_input"] = "0"
     st.session_state["use_bounds"] = True
-    st.session_state["a_val"] = 0.0
-    st.session_state["b_val"] = 2.0
+    st.session_state["bounds_input"] = "[0; 2]"
 
 # ========================================================
 # MÀN HÌNH CHÍNH
