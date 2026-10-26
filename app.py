@@ -223,8 +223,10 @@ if btn_calc or "has_run" in st.session_state:
             with st.container(border=True):
                 st.markdown("### 💡 Chi tiết tính toán Bản chất Sư phạm: $V = |V_1 - V_2|$")
 
-                # 1. Tính toán chi tiết V1
-                v1_integral = sp.integrate(f_expr**2, (x_sym, sp.sympify(x_a), sp.sympify(x_b)))
+                # 1. Tính toán chi tiết V1 (chuẩn hóa phân số tối giản)
+                sym_a = sp.nsimplify(x_a, rational=True)
+                sym_b = sp.nsimplify(x_b, rational=True)
+                v1_integral = sp.integrate(f_expr**2, (x_sym, sym_a, sym_b))
                 v1_total = sp.simplify(sp.pi * v1_integral)
                 st.markdown(f"**1. Khối 1 do $y = {sp.latex(f_expr)}$ quay quanh $Ox$ trên $[{label_a}; {label_b}]$:**")
                 st.latex(
@@ -234,7 +236,7 @@ if btn_calc or "has_run" in st.session_state:
                 )
 
                 # 2. Tính toán chi tiết V2
-                v2_integral = sp.integrate(g_expr**2, (x_sym, sp.sympify(x_a), sp.sympify(x_b)))
+                v2_integral = sp.integrate(g_expr**2, (x_sym, sym_a, sym_b))
                 v2_total = sp.simplify(sp.pi * v2_integral)
                 st.markdown(f"**2. Khối 2 do $y = {sp.latex(g_expr)}$ quay quanh $Ox$ trên $[{label_a}; {label_b}]$:**")
                 st.latex(
