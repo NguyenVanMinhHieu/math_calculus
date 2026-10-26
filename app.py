@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học THPT - Mô phỏng toàn diện |f(x) - g(x)| xoay quanh Ox."""
+"""Web App Giải tích Hình học THPT - Khối tròn xoay hoàn hảo chuẩn Sư phạm."""
 
 from __future__ import annotations
 
@@ -113,18 +113,25 @@ with col_view:
                 st.success("✅ Đã tính xong Thể tích khối tròn xoay quanh Ox!")
                 st.latex(rf"V_{{Ox}} = {res.latex_str} \approx {res.numeric_value:.6f}")
 
-            all_pts = [pt for interval in res.intervals for pt in interval]
-            x_a, x_b = min(all_pts), max(all_pts)
-            label_a = f"{x_a:g}"
-            label_b = f"{x_b:g}"
-            if res.exact_intervals:
-                label_a = sp.latex(res.exact_intervals[0][0])
-                label_b = sp.latex(res.exact_intervals[-1][1])
+            exact_pairs = res.exact_intervals if res.exact_intervals else [(sp.sympify(a), sp.sympify(b)) for a, b in res.intervals]
+            all_pts_num = [pt for interval in res.intervals for pt in interval]
+            x_a, x_b = min(all_pts_num), max(all_pts_num)
+
+            exact_points = []
+            for sa, sb in exact_pairs:
+                exact_points.extend([sa, sb])
+            unique_exact = []
+            seen_floats = []
+            for ep in exact_points:
+                val = round(float(ep.evalf()), 4)
+                if val not in seen_floats:
+                    seen_floats.append(val)
+                    unique_exact.append(ep)
+            unique_exact.sort(key=lambda item: float(item.evalf()))
 
             tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, exact_intervals=res.exact_intervals, is_volume=is_volume)
 
-            # DỰNG HÌNH CHUẨN XÁC
-            fig, ax = plt.subplots(figsize=(6.8, 4.4), dpi=130)
+            fig, ax = plt.subplots(figsize=(7.0, 4.5), dpi=130)
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
             ax.spines["left"].set_visible(False)
@@ -139,7 +146,7 @@ with col_view:
             x_min = x_a - span * 0.25
             x_max = x_b + span * 0.35
 
-            xs_curve = np.linspace(x_a, x_b, 300)
+            xs_curve = np.linspace(x_a, x_b, 350)
             yf = np.asarray(f_num(xs_curve), dtype=float)
             yg = np.asarray(g_num(xs_curve), dtype=float)
             if yf.ndim == 0: yf = np.full_like(xs_curve, yf)
@@ -147,63 +154,86 @@ with col_view:
 
             max_r = max(np.max(np.abs(yf)), np.max(np.abs(yg)), 1.0)
             y_lim = max_r * 1.35
+            y_top_arrow = y_lim * 1.05
             ax.set_xlim(x_min, x_max)
-            ax.set_ylim(-y_lim, y_lim)
+            ax.set_ylim(-y_lim, y_top_arrow)
+
+            dx = (x_max - x_min) * 0.02
+            dy = (y_top_arrow - (-y_lim)) * 0.035
 
             if is_volume:
-                # 1. Trục Ox xuyên tâm (đoạn trong [a, b] nét đứt)
+                # 1. TRỤC HOÀNH OX XUYÊN TÂM
                 ax.plot([x_min, x_a], [0, 0], color="black", linewidth=1.2)
                 ax.plot([x_a, x_b], [0, 0], color="black", linestyle="--", linewidth=1.2)
                 ax.plot([x_b, x_max], [0, 0], color="black", linewidth=1.2)
                 ax.plot(x_max, 0, ">k", clip_on=False, markersize=5)
-                ax.text(x_max, -y_lim * 0.08, r"$x$", fontsize=12, style="italic")
+                ax.text(x_max, -dy * 1.3, r"$x$", fontsize=12, style="italic")
 
-                # Chấm mốc a và b
-                ax.plot(x_a, 0, "ko", markersize=4.5)
-                ax.plot(x_b, 0, "ko", markersize=4.5)
-                ax.text(x_a, -y_lim * 0.14, rf"${label_a}$", fontsize=11, ha="center")
-                ax.text(x_b, -y_lim * 0.14, rf"${label_b}$", fontsize=11, ha="center")
+                # 2. KHÔI PHỤC TRỤC TUNG OY VÀ GỐC O
+                ax.plot([0, 0], [-y_lim * 0.9, y_top_arrow], color="black", linewidth=1.2)
+                ax.plot(0, y_top_arrow, "^k", clip_on=False, markersize=5)
+                ax.text(-dx * 1.6, y_top_arrow, r"$y$", fontsize=12, style="italic", va="center")
+                ax.text(-dx * 1.8, -dy * 1.3, r"$O$", fontsize=11, style="italic",
+                        bbox=dict(boxstyle="square,pad=0.08", facecolor="white", edgecolor="none", alpha=0.85))
 
-                # 2. Miền phẳng gốc (H) giữa f(x) và g(x) (Gạch sọc)
+                # 3. MIỀN PHẲNG GỐC (H) VÀ MIỀN PHẢN CHIẾU
                 ax.fill_between(xs_curve, yf, yg, facecolor="#fce4ec", edgecolor="#c2185b", hatch="///", linewidth=0.6, alpha=0.9)
+                ax.fill_between(xs_curve, -yf, -yg, facecolor="#e1f5fe", edgecolor="#0288d1", hatch="\\\\\\", linewidth=0.5, alpha=0.4)
 
-                # Miền phản chiếu đối xứng qua Ox
-                ax.fill_between(xs_curve, -yf, -yg, facecolor="#e1f5fe", edgecolor="#0288d1", hatch="\\\\\\", linewidth=0.5, alpha=0.45)
-
-                # 3. Hai đường cong gốc và hai đường đối xứng qua Ox
+                # 4. ĐƯỜNG CONG VÀ ĐƯỜNG ĐỐI XỨNG
                 ax.plot(xs_curve, yf, color="#005f73", linewidth=2.0, label=rf"$y = {sp.latex(f_expr)}$")
                 ax.plot(xs_curve, -yf, color="#005f73", linestyle="--", linewidth=1.2, alpha=0.7)
                 if has_g:
                     ax.plot(xs_curve, yg, color="#ca6702", linewidth=1.8, label=rf"$y = {sp.latex(g_expr)}$")
                     ax.plot(xs_curve, -yg, color="#ca6702", linestyle="--", linewidth=1.2, alpha=0.7)
 
-                # 4. Mặt cắt Elip tại a và b (Washer Ellipses)
+                ax.plot([x_a, x_a], [yf[0], yg[0]], color="#c2185b", linestyle=":", linewidth=1.2)
+                ax.plot([x_b, x_b], [yf[-1], yg[-1]], color="#c2185b", linestyle=":", linewidth=1.2)
+
+                # 5. ELIP TẠI a VÀ b
                 rx = span * 0.045
                 fa, ga = abs(float(yf[0])), abs(float(yg[0]))
                 fb, gb = abs(float(yf[-1])), abs(float(yg[-1]))
                 r_out_a, r_in_a = max(fa, ga), min(fa, ga)
                 r_out_b, r_in_b = max(fb, gb), min(fb, gb)
 
-                # Tại a:
                 t_in = np.linspace(-np.pi/2, np.pi/2, 60)
                 t_out = np.linspace(np.pi/2, 3*np.pi/2, 60)
                 if r_out_a > 0.1:
-                    ax.plot(x_a + rx * np.cos(t_in), r_out_a * np.sin(t_in), color="#005f73", linestyle="--", linewidth=1.1)
-                    ax.plot(x_a + rx * np.cos(t_out), r_out_a * np.sin(t_out), color="#005f73", linestyle="-", linewidth=1.8)
+                    ax.plot(x_a + rx * np.cos(t_in), r_out_a * np.sin(t_in), color="#1d3557", linestyle="--", linewidth=1.1)
+                    ax.plot(x_a + rx * np.cos(t_out), r_out_a * np.sin(t_out), color="#1d3557", linestyle="-", linewidth=1.8)
                 if has_g and r_in_a > 0.15 and abs(r_out_a - r_in_a) > 0.1:
                     ax.plot(x_a + rx * 0.7 * np.cos(t_in), r_in_a * np.sin(t_in), color="#ca6702", linestyle="--", linewidth=0.9)
                     ax.plot(x_a + rx * 0.7 * np.cos(t_out), r_in_a * np.sin(t_out), color="#ca6702", linestyle="--", linewidth=1.2)
 
-                # Tại b:
                 t_full = np.linspace(0, 2*np.pi, 120)
                 if r_out_b > 0.1:
-                    ax.plot(x_b + rx * np.cos(t_full), r_out_b * np.sin(t_full), color="#005f73", linestyle="-", linewidth=1.8)
+                    ax.plot(x_b + rx * np.cos(t_full), r_out_b * np.sin(t_full), color="#1d3557", linestyle="-", linewidth=1.8)
                 if has_g and r_in_b > 0.15 and abs(r_out_b - r_in_b) > 0.1:
                     ax.plot(x_b + rx * 0.7 * np.cos(t_full), r_in_b * np.sin(t_full), color="#ca6702", linestyle="-", linewidth=1.3)
 
+                # 6. GẮN NHÃN (-1, O, \sqrt{2}, 2)
+                for ep in unique_exact:
+                    pt_num = float(ep.evalf())
+                    label_latex = sp.latex(ep)
+                    ax.plot(pt_num, 0, "ko", markersize=4.0)
+
+                    if abs(pt_num) > 0.05:
+                        if abs(pt_num - x_a) < 0.05:
+                            ax.text(pt_num, -r_out_a * 0.65, rf"${label_latex}$", fontsize=11, ha="center",
+                                    bbox=dict(boxstyle="square,pad=0.1", facecolor="white", edgecolor="none", alpha=0.9))
+                        elif abs(pt_num - x_b) < 0.05:
+                            ax.text(pt_num, -r_out_b * 0.5, rf"${label_latex}$", fontsize=11, ha="center",
+                                    bbox=dict(boxstyle="square,pad=0.1", facecolor="white", edgecolor="none", alpha=0.9))
+                        else:
+                            y_cross = float(f_num(pt_num))
+                            ax.plot([pt_num, pt_num], [0, y_cross], color="#555555", linestyle=":", linewidth=0.9)
+                            ax.plot(pt_num, y_cross, "ko", markersize=3.5)
+                            ax.text(pt_num, -dy * 1.4, rf"${label_latex}$", fontsize=11, ha="center",
+                                    bbox=dict(boxstyle="square,pad=0.1", facecolor="white", edgecolor="none", alpha=0.85))
+
                 ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#e0e0e0", fontsize=9)
             else:
-                # 2D thông thường
                 ax.spines["left"].set_visible(True)
                 ax.spines["bottom"].set_visible(True)
                 ax.spines["left"].set_position(("data", 0))
