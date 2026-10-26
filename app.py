@@ -74,6 +74,16 @@ def draw_single_revolution_solid(
     ax.plot(x_max, 0, ">k", clip_on=False, markersize=5)
     ax.text(x_max, -y_lim * 0.08, r"$x$", fontsize=11, style="italic")
 
+    # Bổ sung trục tung Oy và gốc tọa độ O
+    if x_min <= 0 <= x_max:
+        y_top_arrow = y_lim * 1.05
+        ax.plot([0, 0], [-y_lim * 0.85, y_top_arrow], color="black", linewidth=1.2)
+        ax.plot(0, y_top_arrow, "^k", clip_on=False, markersize=5)
+        dx = span * 0.02
+        ax.text(-dx * 1.6, y_top_arrow, r"$y$", fontsize=11, style="italic", va="center")
+        ax.text(-dx * 1.8, -y_lim * 0.12, r"$O$", fontsize=10, style="italic",
+                bbox=dict(boxstyle="square,pad=0.08", facecolor="white", edgecolor="none", alpha=0.85))
+
     # Điểm mốc a và b
     ax.plot(x_a, 0, "ko", markersize=4.0)
     ax.plot(x_b, 0, "ko", markersize=4.0)
