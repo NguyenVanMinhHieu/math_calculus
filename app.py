@@ -460,9 +460,45 @@ if btn_calc or "has_run" in st.session_state:
 
             # 5. Vẽ hai đường cong sắc nét
             xs_plot = np.linspace(x_plot_min, x_plot_max, 600)
-            ax.plot(xs_plot, f_n(xs_plot), color="#2563eb", linewidth=1.8, zorder=4, label=rf"$y = {sp.latex(f_expr)}$")
+            ys_plot_f = f_n(xs_plot)
+            ax.plot(xs_plot, ys_plot_f, color="#2563eb", linewidth=1.8, zorder=4)
+
+            # Gắn nhãn chuẩn SGK (C): y = f(x) trực tiếp trên nhánh đồ thị
+            valid_f = np.where((ys_plot_f >= y_plot_min + 0.8) & (ys_plot_f <= y_plot_max - 0.8))[0]
+            if len(valid_f) > 0:
+                idx_f = valid_f[int(len(valid_f) * 0.2)]
+                ax.text(
+                    xs_plot[idx_f], ys_plot_f[idx_f] + 0.35,
+                    rf"$(C): y = {sp.latex(f_expr)}$",
+                    color="#1d4ed8", fontsize=10.5, weight="bold",
+                    ha="right", va="bottom",
+                    bbox=dict(boxstyle="round,pad=0.18", facecolor="white", edgecolor="none", alpha=0.88),
+                    zorder=6
+                )
+
             if has_g:
-                ax.plot(xs_plot, g_n(xs_plot), color="#dc2626", linestyle="--", linewidth=1.6, zorder=4, label=rf"$y = {sp.latex(g_expr)}$")
+                ys_plot_g = g_n(xs_plot)
+                ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="--", linewidth=1.6, zorder=4)
+
+                # Xác định ký hiệu (d) cho đường thẳng hoặc (C') cho đường cong
+                is_line = False
+                try:
+                    is_line = sp.Poly(g_expr, x_sym).degree() <= 1
+                except Exception:
+                    is_line = False
+                name_g = "(d)" if is_line else r"(C')"
+
+                valid_g = np.where((ys_plot_g >= y_plot_min + 0.8) & (ys_plot_g <= y_plot_max - 0.8))[0]
+                if len(valid_g) > 0:
+                    idx_g = valid_g[int(len(valid_g) * 0.85)]
+                    ax.text(
+                        xs_plot[idx_g] + 0.25, ys_plot_g[idx_g] - 0.2,
+                        rf"${name_g}: y = {sp.latex(g_expr)}$",
+                        color="#dc2626", fontsize=10.5, weight="bold",
+                        ha="left", va="top",
+                        bbox=dict(boxstyle="round,pad=0.18", facecolor="white", edgecolor="none", alpha=0.88),
+                        zorder=6
+                    )
 
             # 6. Đường dóng vuông góc tại các cận
             ax.plot([x_a, x_a], [0, f_n(x_a)], color="#1d4ed8", linestyle=":", linewidth=1.1, zorder=3)
@@ -470,9 +506,6 @@ if btn_calc or "has_run" in st.session_state:
             if has_g:
                 ax.plot([x_a, x_a], [0, g_n(x_a)], color="#dc2626", linestyle=":", linewidth=1.1, zorder=3)
                 ax.plot([x_b, x_b], [0, g_n(x_b)], color="#dc2626", linestyle=":", linewidth=1.1, zorder=3)
-
-            # Chú giải thanh nhã đặt góc ngoài
-            ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#cbd5e1", fontsize=9.0)
 
         svg_buffer = io.StringIO()
         fig.savefig(svg_buffer, format="svg", bbox_inches="tight")
