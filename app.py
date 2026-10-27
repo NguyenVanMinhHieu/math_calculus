@@ -470,7 +470,7 @@ if btn_calc or "has_run" in st.session_state:
             # 2. Gắn nhãn (d): CỐ ĐỊNH Ở MÉP NGOÀI GÓC DƯỚI BÊN TRÁI (Hoàn toàn không chạm đồ thị)
             if has_g:
                 ys_plot_g = g_n(xs_plot)
-                ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="--", linewidth=1.6, zorder=4)
+                ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="-", linewidth=1.7, zorder=4)
 
                 is_line = False
                 try:
