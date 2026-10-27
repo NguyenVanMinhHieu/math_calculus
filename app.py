@@ -367,7 +367,7 @@ if btn_calc or "has_run" in st.session_state:
             f_n = sp.lambdify(x_sym, f_expr, "numpy")
             g_n = sp.lambdify(x_sym, g_expr, "numpy")
 
-            # 1. Ý TƯỞNG SƯ PHẠM: KHUNG NHÌN MỞ RỘNG (VIEWPORT) NHƯNG TRỤC TOẠ ĐỘ VẼ GỌN GÀNG
+            # 1. VIEWPORT THÍCH ỨNG THÔNG MINH THEO ĐỘ DÀI CÔNG THỨC VÀ BIÊN ĐỘ ĐỒ THỊ
             xs_core = np.linspace(x_a, x_b, 350)
             yf_core = np.asarray(f_n(xs_core), dtype=float)
             yg_core = np.asarray(g_n(xs_core), dtype=float)
@@ -375,24 +375,32 @@ if btn_calc or "has_run" in st.session_state:
             y_min_core = min(np.nanmin(yf_core), np.nanmin(yg_core), 0.0)
             y_max_core = max(np.nanmax(yf_core), np.nanmax(yg_core), 0.0)
 
-            # A. Trục toạ độ Oxy ngắn gọn, tập trung trọng tâm bài toán
-            x_axis_min = min(x_a, 0.0) - 1.2
-            x_axis_max = max(x_b, 0.0) + 1.2
-            y_axis_min = min(y_min_core, 0.0) - 1.2
-            y_axis_max = max(y_max_core, 0.0) + 1.2
+            # Đo độ dài chuỗi công thức LaTeX để cấp không gian thở tương xứng
+            len_f_str = len(sp.latex(f_expr))
+            len_g_str = len(sp.latex(g_expr))
+            max_formula_len = max(len_f_str, len_g_str)
 
-            # B. Khung nhìn (Viewport) mở rộng bao bọc xung quanh, tạo không gian thở cho nhãn và đường cong
-            x_view_min = x_axis_min - 1.5
-            x_view_max = x_axis_max + 1.8
-            y_view_min = y_axis_min - 1.2
-            y_view_max = y_axis_max + 1.5
+            # Tự động tính toán độ mở rộng Viewport (adaptive padding)
+            pad_x_formula = max(max_formula_len * 0.12, 1.8)
+            pad_y_formula = 2.0
 
-            # Tỉ lệ trực chuẩn 1:1
+            # Giới hạn trục toạ độ Oxy phủ kín mốc nguyên
+            x_axis_min = int(np.floor(min(x_a, 0.0) - pad_x_formula))
+            x_axis_max = int(np.ceil(max(x_b, 0.0) + pad_x_formula))
+            y_axis_min = int(np.floor(min(y_min_core, 0.0) - pad_y_formula))
+            y_axis_max = int(np.ceil(max(y_max_core, 0.0) + pad_y_formula))
+
+            # Viewport mở rộng thêm 0.8 đơn vị để mũi tên và chữ x, y không chạm viền
+            x_view_min = x_axis_min - 0.8
+            x_view_max = x_axis_max + 0.8
+            y_view_min = y_axis_min - 0.8
+            y_view_max = y_axis_max + 0.8
+
             dx_view = x_view_max - x_view_min
             dy_view = y_view_max - y_view_min
 
             unit_px = 0.52
-            fig_w = max(min(dx_view * unit_px, 9.5), 6.5)
+            fig_w = max(min(dx_view * unit_px, 10.0), 6.5)
             fig_h = max(min(dy_view * unit_px, 10.0), 5.5)
 
             fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=140)
@@ -402,37 +410,32 @@ if btn_calc or "has_run" in st.session_state:
             ax.set_aspect("equal", adjustable="box")
             ax.set_xlim(x_view_min, x_view_max)
             ax.set_ylim(y_view_min, y_view_max)
-            ax.axis("off")  # Tắt khung viền cứng nhắc
+            ax.axis("off")
 
-            # 2. Lưới ô vuông mờ nhã nhặn bao phủ vùng trọng tâm
-            grid_x_min = int(np.floor(x_axis_min))
-            grid_x_max = int(np.ceil(x_axis_max))
-            grid_y_min = int(np.floor(y_axis_min))
-            grid_y_max = int(np.ceil(y_axis_max))
+            # 2. Lưới ô vuông mờ nhã nhặn bao phủ trọn vẹn trục
+            for gx in range(x_axis_min, x_axis_max + 1):
+                ax.plot([gx, gx], [y_axis_min, y_axis_max], color="#edf2f7", lw=0.7, zorder=1)
+            for gy in range(y_axis_min, y_axis_max + 1):
+                ax.plot([x_axis_min, x_axis_max], [gy, gy], color="#edf2f7", lw=0.7, zorder=1)
 
-            for gx in range(grid_x_min, grid_x_max + 1):
-                ax.plot([gx, gx], [grid_y_min, grid_y_max], color="#edf2f7", lw=0.7, zorder=1)
-            for gy in range(grid_y_min, grid_y_max + 1):
-                ax.plot([grid_x_min, grid_x_max], [gy, gy], color="#edf2f7", lw=0.7, zorder=1)
-
-            # 3. Trục toạ độ Oxy thanh mảnh, chiều dài vừa vặn, kết thúc bằng mũi tên nhọn thanh thoát
+            # 3. Trục toạ độ Oxy thanh mảnh, bao trọn toàn bộ các mốc chia
             arrow_style = dict(arrowstyle="-|>,head_width=0.22,head_length=0.45", color="#1e293b", lw=1.1, mutation_scale=12)
-            ax.annotate("", xy=(x_axis_max, 0), xytext=(x_axis_min, 0), arrowprops=arrow_style, zorder=3)
-            ax.annotate("", xy=(0, y_axis_max), xytext=(0, y_axis_min), arrowprops=arrow_style, zorder=3)
+            ax.annotate("", xy=(x_axis_max + 0.5, 0), xytext=(x_axis_min - 0.2, 0), arrowprops=arrow_style, zorder=3)
+            ax.annotate("", xy=(0, y_axis_max + 0.5), xytext=(0, y_axis_min - 0.2), arrowprops=arrow_style, zorder=3)
 
-            # Tên trục x, y đặt thoáng sau mũi tên
-            ax.text(x_axis_max + 0.25, 0, r"$x$", fontsize=12, style="italic", ha="left", va="center")
-            ax.text(0, y_axis_max + 0.25, r"$y$", fontsize=12, style="italic", ha="center", va="bottom")
+            # Nhãn tên trục và gốc O
+            ax.text(x_axis_max + 0.65, 0, r"$x$", fontsize=12, style="italic", ha="left", va="center")
+            ax.text(0, y_axis_max + 0.65, r"$y$", fontsize=12, style="italic", ha="center", va="bottom")
             ax.text(-0.25, -0.28, r"$O$", fontsize=11, style="italic", ha="right", va="top")
 
-            # Vạch chia đơn vị (Ticks) ngắn gọn trên đoạn trục
-            for vx in range(grid_x_min, grid_x_max):
+            # Vạch chia đơn vị (Ticks) đều đặn trên cả 2 trục
+            for vx in range(x_axis_min, x_axis_max + 1):
                 if vx == 0:
                     continue
                 ax.plot([vx, vx], [-0.07, 0.07], color="#1e293b", lw=0.8, zorder=3)
                 ax.text(vx, -0.25, f"{vx}", fontsize=9, ha="center", va="top", color="#334155")
 
-            for vy in range(grid_y_min, grid_y_max):
+            for vy in range(y_axis_min, y_axis_max + 1):
                 if vy == 0:
                     continue
                 ax.plot([-0.07, 0.07], [vy, vy], color="#1e293b", lw=0.8, zorder=3)
@@ -456,10 +459,10 @@ if btn_calc or "has_run" in st.session_state:
 
             # 1. Gắn nhãn (C): CỐ ĐỊNH Ở MÉP NGOÀI GÓC TRÊN BÊN PHẢI (Hoàn toàn không chạm đồ thị)
             ax.text(
-                x_view_max - 0.25, y_view_max - 0.35,
+                x_view_min + 0.3, y_view_max - 0.35,
                 rf"$(C): y = {sp.latex(f_expr)}$",
                 color="#1d4ed8", fontsize=11, weight="bold",
-                ha="right", va="top",
+                ha="left", va="top",
                 bbox=dict(boxstyle="round,pad=0.25", facecolor="#ffffff", edgecolor="#cbd5e1", linewidth=0.7, alpha=0.95),
                 zorder=7
             )
