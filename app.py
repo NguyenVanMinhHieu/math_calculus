@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import re
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import streamlit as st
 import sympy as sp
@@ -380,6 +381,21 @@ if btn_calc or "has_run" in st.session_state:
             ax.spines["bottom"].set_linewidth(1.2)
 
             ax.set_aspect(axis_ratio)
+
+            # Khóa bước nhảy 1 đơn vị trên cả Ox và Oy chuẩn SGK
+            ax.xaxis.set_major_locator(ticker.MultipleLocator(1.0))
+            ax.yaxis.set_major_locator(ticker.MultipleLocator(1.0))
+
+            # Ẩn số 0 tại gốc tọa độ để không bị đè với ký hiệu O
+            def _clean_zero(val, pos):
+                if abs(val) < 1e-5:
+                    return ""
+                if abs(val - round(val)) < 1e-5:
+                    return f"{int(round(val))}"
+                return f"{val:g}"
+
+            ax.xaxis.set_major_formatter(ticker.FuncFormatter(_clean_zero))
+            ax.yaxis.set_major_formatter(ticker.FuncFormatter(_clean_zero))
 
             # Vẽ hai đường cong
             ax.plot(xs_2d, yf, color="#005f73", linewidth=2.0, label=rf"$y = {sp.latex(f_expr)}$")
