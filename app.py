@@ -363,79 +363,93 @@ if btn_calc or "has_run" in st.session_state:
                 )
                 fig.subplots_adjust(top=0.88, wspace=0.22)
         else:
-            # DIỆN TÍCH HÌNH PHẲNG VỚI NHÃN TỈ LỆ BÊN PHẢI
+            # DIỆN TÍCH HÌNH PHẲNG CHUẨN MỰC BỘ GD&ĐT
             f_n = sp.lambdify(x_sym, f_expr, "numpy")
             g_n = sp.lambdify(x_sym, g_expr, "numpy")
-            span_x = max(x_b - x_a, 1.0)
-            margin_x = span_x * 0.25
-            xs_2d = np.linspace(x_a - margin_x, x_b + margin_x, 400)
+
+            # Mở rộng biên ngang để hình cân đối, không bị hẹp như thanh kẹp sách
+            x_min_data = min(x_a, -1.0) - 1.2
+            x_max_data = max(x_b, 1.0) + 1.2
+
+            xs_2d = np.linspace(x_min_data, x_max_data, 500)
             yf = np.asarray(f_n(xs_2d), dtype=float)
             yg = np.asarray(g_n(xs_2d), dtype=float)
 
-            fig, ax = plt.subplots(figsize=(8.5, 5.2), dpi=130)
-            ax.spines["left"].set_position(("data", 0))
-            ax.spines["bottom"].set_position(("data", 0))
-            ax.spines["top"].set_visible(False)
-            ax.spines["right"].set_visible(False)
-            ax.spines["left"].set_linewidth(1.2)
-            ax.spines["bottom"].set_linewidth(1.2)
-
-            ax.set_aspect(axis_ratio)
-
-            # Khóa bước nhảy 1 đơn vị trên cả Ox và Oy chuẩn SGK
-            ax.xaxis.set_major_locator(ticker.MultipleLocator(1.0))
-            ax.yaxis.set_major_locator(ticker.MultipleLocator(1.0))
-
-            # Ẩn số 0 tại gốc tọa độ để không bị đè với ký hiệu O
-            def _clean_zero(val, pos):
-                if abs(val) < 1e-5:
-                    return ""
-                if abs(val - round(val)) < 1e-5:
-                    return f"{int(round(val))}"
-                return f"{val:g}"
-
-            ax.xaxis.set_major_formatter(ticker.FuncFormatter(_clean_zero))
-            ax.yaxis.set_major_formatter(ticker.FuncFormatter(_clean_zero))
-
-            # Vẽ hai đường cong
-            ax.plot(xs_2d, yf, color="#005f73", linewidth=2.0, label=rf"$y = {sp.latex(f_expr)}$")
-            if has_g:
-                ax.plot(xs_2d, yg, color="#ca6702", linestyle="--", linewidth=1.8, label=rf"$y = {sp.latex(g_expr)}$")
-
-            # Tô miền diện tích tích phân
-            xs_fill = np.linspace(x_a, x_b, 300)
+            # Cắt phạm vi hiển thị y hợp lý xung quanh miền tích phân
+            xs_fill = np.linspace(x_a, x_b, 350)
             yf_fill = np.asarray(f_n(xs_fill), dtype=float)
             yg_fill = np.asarray(g_n(xs_fill), dtype=float)
-            ax.fill_between(xs_fill, yf_fill, yg_fill, facecolor="#edf4f9", edgecolor="#1d3557", hatch="///", linewidth=0.6, alpha=0.9)
 
-            # Hai đường dóng thẳng đứng khép góc tại a và b
-            ax.plot([x_a, x_a], [yf_fill[0], yg_fill[0]], color="#1d3557", linestyle="-", linewidth=1.2)
-            ax.plot([x_b, x_b], [yf_fill[-1], yg_fill[-1]], color="#1d3557", linestyle="-", linewidth=1.2)
+            y_core_min = min(np.nanmin(yf_fill), np.nanmin(yg_fill), 0.0)
+            y_core_max = max(np.nanmax(yf_fill), np.nanmax(yg_fill), 0.0)
+            y_span = max(y_core_max - y_core_min, 2.0)
+            
+            y_plot_min = np.floor(y_core_min - y_span * 0.25)
+            y_plot_max = np.ceil(y_core_max + y_span * 0.35)
 
-            # Mũi tên trục Ox và Oy
-            x_max_arrow = x_b + margin_x
-            y_max_arrow = max(np.max(yf), np.max(yg)) * 1.15
-            ax.plot(x_max_arrow, 0, ">k", clip_on=False, markersize=5)
-            ax.plot(0, y_max_arrow, "^k", clip_on=False, markersize=5)
+            # Khung hình chuẩn tỉ lệ vàng sư phạm
+            dx = x_max_data - x_min_data
+            dy = y_plot_max - y_plot_min
+            fig_w = 7.5
+            fig_h = max(min(fig_w * (dy / dx), 9.0), 5.5)
 
-            ax.text(x_max_arrow, -0.25 * axis_ratio, r"$x$", fontsize=11, style="italic")
-            ax.text(-0.25, y_max_arrow, r"$y$", fontsize=11, style="italic", va="center")
-            ax.text(-0.25, -0.25 * axis_ratio, r"$O$", fontsize=10, style="italic")
+            fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=140)
+            ax.set_aspect("equal")
+            ax.set_xlim(x_min_data, x_max_data)
+            ax.set_ylim(y_plot_min, y_plot_max)
+            ax.axis("off")
 
-            # NHÃN TỈ LỆ x:y BÊN PHẢI HÌNH VẼ
-            scale_str = "x : y = 1 : 1" if abs(axis_ratio - 1.0) < 1e-4 else f"x : y = 1 : {axis_ratio:g}"
-            ax.text(
-                0.96, 0.94, scale_str,
-                transform=ax.transAxes,
-                fontsize=11,
-                ha="right",
-                va="top",
-                weight="bold",
-                color="#1d3557",
-                bbox=dict(boxstyle="square,pad=0.25", facecolor="#f8f9fa", edgecolor="#b0bec5", alpha=0.92)
+            # 1. Trục toạ độ thanh mảnh có mũi tên nhọn LaTeX
+            arrow_props = dict(arrowstyle="-|>,head_width=0.22,head_length=0.4", color="black", lw=1.0, mutation_scale=11)
+            ax.annotate("", xy=(x_max_data - 0.1, 0), xytext=(x_min_data + 0.1, 0), arrowprops=arrow_props)
+            ax.annotate("", xy=(0, y_plot_max - 0.1), xytext=(0, y_plot_min + 0.1), arrowprops=arrow_props)
+
+            # Nhãn trục x, y và gốc O
+            ax.text(x_max_data - 0.05, -0.35, r"$x$", fontsize=12, style="italic", ha="right", va="top")
+            ax.text(-0.3, y_plot_max - 0.05, r"$y$", fontsize=12, style="italic", ha="right", va="top")
+            ax.text(-0.25, -0.32, r"$O$", fontsize=11, style="italic", ha="right", va="top")
+
+            # 2. Vạch chia trục (Ticks) chuẩn SGK: bước 2 nếu trục quá cao, bước 1 nếu vừa phải
+            step_y = 2 if dy > 7 else 1
+            for vx in range(int(np.ceil(x_min_data)) + 1, int(np.floor(x_max_data))):
+                if vx == 0:
+                    continue
+                ax.plot([vx, vx], [-0.07, 0.07], color="black", lw=0.8)
+                ax.text(vx, -0.28, f"{vx}", fontsize=9.5, ha="center", va="top")
+
+            for vy in range(int(np.ceil(y_plot_min)) + 1, int(np.floor(y_plot_max))):
+                if vy == 0 or vy % step_y != 0:
+                    continue
+                ax.plot([-0.07, 0.07], [vy, vy], color="black", lw=0.8)
+                ax.text(-0.2, vy, f"{vy}", fontsize=9.5, ha="right", va="center")
+
+            # 3. Tô miền diện tích gạch sọc chuẩn mực SGK
+            ax.fill_between(
+                xs_fill, yf_fill, yg_fill,
+                facecolor="#f4f7fb",
+                edgecolor="#1d3557",
+                hatch="///",
+                linewidth=0.7,
+                alpha=0.9
             )
 
-            ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#cccccc", fontsize=9.5)
+            # 4. Vẽ hai đường cong thanh lịch
+            line_f, = ax.plot(xs_2d, yf, color="#005f73", linewidth=1.8)
+            if has_g:
+                line_g, = ax.plot(xs_2d, yg, color="#c85a17", linestyle="--", linewidth=1.6)
+
+            # 5. Viết tên đường cong trực tiếp lên nhánh đồ thị (Không dùng hộp Legend thô thiển)
+            ax.text(xs_2d[-25], yf[-25] + 0.35, rf"$y = {sp.latex(f_expr)}$", color="#005f73", fontsize=11, weight="bold", ha="center")
+            if has_g:
+                idx_g_lbl = int(len(xs_2d) * 0.72)
+                ax.text(xs_2d[idx_g_lbl], yg[idx_g_lbl] + 0.4, rf"$y = {sp.latex(g_expr)}$", color="#c85a17", fontsize=11, weight="bold", ha="center")
+
+            # 6. Đường dóng vuông góc xuống Ox tại a và b
+            ax.plot([x_a, x_a], [0, f_n(x_a)], color="#1d3557", linestyle=":", linewidth=1.1)
+            ax.plot([x_b, x_b], [0, f_n(x_b)], color="#1d3557", linestyle=":", linewidth=1.1)
+            if has_g:
+                ax.plot([x_a, x_a], [0, g_n(x_a)], color="#c85a17", linestyle=":", linewidth=1.1)
+                ax.plot([x_b, x_b], [0, g_n(x_b)], color="#c85a17", linestyle=":", linewidth=1.1)
 
         svg_buffer = io.StringIO()
         fig.savefig(svg_buffer, format="svg", bbox_inches="tight")
@@ -449,7 +463,9 @@ if btn_calc or "has_run" in st.session_state:
         tab_img, tab_tikz = st.tabs(["📊 Hình vẽ Sư phạm", "📋 Mã nguồn TikZ (LaTeX)"])
 
         with tab_img:
-            st.image(svg_data, use_container_width=True)
+            _, col_mid, _ = st.columns([1, 6, 1])
+            with col_mid:
+                st.image(svg_data, width=620)
             c_btn1, c_btn2 = st.columns(2)
             with c_btn1:
                 st.download_button("📥 Tải ảnh SVG (Vector sắc nét)", data=svg_data, file_name="hinh_su_pham.svg", mime="image/svg+xml", use_container_width=True)
