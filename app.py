@@ -464,31 +464,17 @@ if btn_calc or "has_run" in st.session_state:
             ys_plot_f = f_n(xs_plot)
             ax.plot(xs_plot, ys_plot_f, color="#2563eb", linewidth=1.8, zorder=4)
 
-            # 1. Gắn nhãn (C): Đặt cố định ở PHÍA TRÊN BÊN PHẢI (nhánh vươn lên của f)
-            # Tìm điểm trên nhánh f(x) ở góc trên bên phải (x > 0, gần đỉnh trên)
-            cand_c = np.where((xs_plot >= max(0.0, x_b * 0.5)) & (ys_plot_f >= y_plot_max * 0.55) & (ys_plot_f <= y_plot_max - 0.5))[0]
-            if len(cand_c) > 0:
-                idx_c = cand_c[len(cand_c) // 2]
-                ax.text(
-                    xs_plot[idx_c] - 0.25, ys_plot_f[idx_c],
-                    rf"$(C): y = {sp.latex(f_expr)}$",
-                    color="#1d4ed8", fontsize=10.5, weight="bold",
-                    ha="right", va="center",
-                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
-                    zorder=6
-                )
-            else:
-                # Dự phòng nếu nhánh phải ra ngoài khung: neo tại góc trên phải
-                ax.text(
-                    x_plot_max - 0.5, y_plot_max - 0.6,
-                    rf"$(C): y = {sp.latex(f_expr)}$",
-                    color="#1d4ed8", fontsize=10.5, weight="bold",
-                    ha="right", va="top",
-                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
-                    zorder=6
-                )
+            # 1. Gắn nhãn (C): CỐ ĐỊNH Ở MÉP NGOÀI GÓC TRÊN BÊN PHẢI (Hoàn toàn không chạm đồ thị)
+            ax.text(
+                x_plot_max - 0.25, y_plot_max - 0.35,
+                rf"$(C): y = {sp.latex(f_expr)}$",
+                color="#1d4ed8", fontsize=11, weight="bold",
+                ha="right", va="top",
+                bbox=dict(boxstyle="round,pad=0.25", facecolor="#ffffff", edgecolor="#cbd5e1", linewidth=0.7, alpha=0.95),
+                zorder=7
+            )
 
-            # 2. Gắn nhãn (d): Đặt cố định ở PHÍA DƯỚI BÊN TRÁI (nhánh dưới của g)
+            # 2. Gắn nhãn (d): CỐ ĐỊNH Ở MÉP NGOÀI GÓC DƯỚI BÊN TRÁI (Hoàn toàn không chạm đồ thị)
             if has_g:
                 ys_plot_g = g_n(xs_plot)
                 ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="--", linewidth=1.6, zorder=4)
@@ -500,28 +486,14 @@ if btn_calc or "has_run" in st.session_state:
                     is_line = False
                 name_g = "(d)" if is_line else r"(C')"
 
-                # Tìm điểm trên g(x) ở góc dưới bên trái (x < 0, y < 0)
-                cand_d = np.where((xs_plot <= min(0.0, x_a * 0.5)) & (ys_plot_g <= y_plot_min * 0.45) & (ys_plot_g >= y_plot_min + 0.6))[0]
-                if len(cand_d) > 0:
-                    idx_d = cand_d[len(cand_d) // 2]
-                    ax.text(
-                        xs_plot[idx_d] + 0.3, ys_plot_g[idx_d] - 0.15,
-                        rf"${name_g}: y = {sp.latex(g_expr)}$",
-                        color="#dc2626", fontsize=10.5, weight="bold",
-                        ha="left", va="top",
-                        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
-                        zorder=6
-                    )
-                else:
-                    # Dự phòng nếu nhánh trái ra ngoài khung: neo tại góc dưới trái
-                    ax.text(
-                        x_plot_min + 0.5, y_plot_min + 0.6,
-                        rf"${name_g}: y = {sp.latex(g_expr)}$",
-                        color="#dc2626", fontsize=10.5, weight="bold",
-                        ha="left", va="bottom",
-                        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
-                        zorder=6
-                    )
+                ax.text(
+                    x_plot_min + 0.25, y_plot_min + 0.35,
+                    rf"${name_g}: y = {sp.latex(g_expr)}$",
+                    color="#dc2626", fontsize=11, weight="bold",
+                    ha="left", va="bottom",
+                    bbox=dict(boxstyle="round,pad=0.25", facecolor="#ffffff", edgecolor="#cbd5e1", linewidth=0.7, alpha=0.95),
+                    zorder=7
+                )
 
             # 6. Đường dóng vuông góc tại các cận
             ax.plot([x_a, x_a], [0, f_n(x_a)], color="#1d4ed8", linestyle=":", linewidth=1.1, zorder=3)
