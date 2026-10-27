@@ -254,7 +254,10 @@ if btn_calc or "has_run" in st.session_state:
         if not is_volume:
             res = engine.calculate_area(f_expr, g_expr, a=a_val, b=b_val)
             st.success("✅ Đã tính xong Diện tích hình phẳng!")
-            st.latex(rf"S = {res.latex_str} \approx {res.numeric_value:.6f}")
+            with st.container(border=True):
+                st.markdown("### 💡 Kết quả Tính toán Diện tích")
+                st.latex(rf"S = {res.latex_str}")
+                st.markdown(rf"**Giá trị xấp xỉ:** $S \approx {res.numeric_value:.6f}$")
         else:
             res = engine.calculate_rotation_volume_ox(f_expr, g_expr, a=a_val, b=b_val)
             st.success("✅ Đã tính xong Thể tích khối tròn xoay quanh Ox!")
