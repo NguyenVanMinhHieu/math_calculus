@@ -363,93 +363,116 @@ if btn_calc or "has_run" in st.session_state:
                 )
                 fig.subplots_adjust(top=0.88, wspace=0.22)
         else:
-            # DIỆN TÍCH HÌNH PHẲNG CHUẨN MỰC BỘ GD&ĐT
+            # DIỆN TÍCH HÌNH PHẲNG: LƯỚI TRỰC CHUẨN CÂN XỨNG (NVMH MATH-ARCH STANDARD)
             f_n = sp.lambdify(x_sym, f_expr, "numpy")
             g_n = sp.lambdify(x_sym, g_expr, "numpy")
 
-            # Mở rộng biên ngang để hình cân đối, không bị hẹp như thanh kẹp sách
-            x_min_data = min(x_a, -1.0) - 1.2
-            x_max_data = max(x_b, 1.0) + 1.2
+            # 1. Xác định tâm đối xứng và bán kính bao của miền tích phân
+            xs_core = np.linspace(x_a, x_b, 350)
+            yf_core = np.asarray(f_n(xs_core), dtype=float)
+            yg_core = np.asarray(g_n(xs_core), dtype=float)
 
-            xs_2d = np.linspace(x_min_data, x_max_data, 500)
-            yf = np.asarray(f_n(xs_2d), dtype=float)
-            yg = np.asarray(g_n(xs_2d), dtype=float)
+            y_min_core = min(np.nanmin(yf_core), np.nanmin(yg_core), 0.0)
+            y_max_core = max(np.nanmax(yf_core), np.nanmax(yg_core), 0.0)
 
-            # Cắt phạm vi hiển thị y hợp lý xung quanh miền tích phân
-            xs_fill = np.linspace(x_a, x_b, 350)
-            yf_fill = np.asarray(f_n(xs_fill), dtype=float)
-            yg_fill = np.asarray(g_n(xs_fill), dtype=float)
+            # Tính toạ độ tâm hình học (Center of Symmetry)
+            cx = (x_a + x_b) / 2.0
+            cy = (y_min_core + y_max_core) / 2.0
 
-            y_core_min = min(np.nanmin(yf_fill), np.nanmin(yg_fill), 0.0)
-            y_core_max = max(np.nanmax(yf_fill), np.nanmax(yg_fill), 0.0)
-            y_span = max(y_core_max - y_core_min, 2.0)
-            
-            y_plot_min = np.floor(y_core_min - y_span * 0.25)
-            y_plot_max = np.ceil(y_core_max + y_span * 0.35)
+            # Bán kính cân đối toả đều từ tâm (symmetric padding)
+            rx = max(abs(x_b - cx), abs(x_a - cx), abs(0.0 - cx)) + 2.0
+            ry = max(abs(y_max_core - cy), abs(y_min_core - cy), abs(0.0 - cy)) + 2.0
 
-            # Khung hình chuẩn tỉ lệ vàng sư phạm
-            dx = x_max_data - x_min_data
-            dy = y_plot_max - y_plot_min
-            fig_w = 7.5
-            fig_h = max(min(fig_w * (dy / dx), 9.0), 5.5)
+            # Khóa mốc nguyên trực chuẩn
+            x_plot_min = int(np.floor(cx - rx))
+            x_plot_max = int(np.ceil(cx + rx))
+            y_plot_min = int(np.floor(cy - ry))
+            y_plot_max = int(np.ceil(cy + ry))
+
+            # Giới hạn kích thước lưới trang nhã
+            dx_units = x_plot_max - x_plot_min
+            dy_units = y_plot_max - y_plot_min
+
+            unit_px = 0.55  # Tỉ lệ vật lý 1:1 chuẩn
+            fig_w = max(min(dx_units * unit_px, 10.0), 6.5)
+            fig_h = max(min(dy_units * unit_px, 10.0), 5.5)
 
             fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=140)
-            ax.set_aspect("equal")
-            ax.set_xlim(x_min_data, x_max_data)
+            fig.patch.set_facecolor("white")
+            ax.set_facecolor("white")
+
+            # Khóa cứng tỉ lệ trực chuẩn 1:1
+            ax.set_aspect("equal", adjustable="box")
+            ax.set_xlim(x_plot_min, x_plot_max)
             ax.set_ylim(y_plot_min, y_plot_max)
-            ax.axis("off")
 
-            # 1. Trục toạ độ thanh mảnh có mũi tên nhọn LaTeX
-            arrow_props = dict(arrowstyle="-|>,head_width=0.22,head_length=0.4", color="black", lw=1.0, mutation_scale=11)
-            ax.annotate("", xy=(x_max_data - 0.1, 0), xytext=(x_min_data + 0.1, 0), arrowprops=arrow_props)
-            ax.annotate("", xy=(0, y_plot_max - 0.1), xytext=(0, y_plot_min + 0.1), arrowprops=arrow_props)
+            # 2. Lưới ô vuông mờ nhã nhặn NVMH MATH-ARCH (mỗi ô là 1 đơn vị trực chuẩn)
+            ax.xaxis.set_major_locator(ticker.MultipleLocator(1.0))
+            ax.yaxis.set_major_locator(ticker.MultipleLocator(1.0))
+            ax.grid(True, which="major", color="#edf2f7", linestyle="-", linewidth=0.8, zorder=1)
 
-            # Nhãn trục x, y và gốc O
-            ax.text(x_max_data - 0.05, -0.35, r"$x$", fontsize=12, style="italic", ha="right", va="top")
-            ax.text(-0.3, y_plot_max - 0.05, r"$y$", fontsize=12, style="italic", ha="right", va="top")
-            ax.text(-0.25, -0.32, r"$O$", fontsize=11, style="italic", ha="right", va="top")
+            # 3. Trục toạ độ Oxy xuyên tâm đối xứng
+            ax.spines["left"].set_position(("data", 0))
+            ax.spines["bottom"].set_position(("data", 0))
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.spines["left"].set_color("#1e293b")
+            ax.spines["bottom"].set_color("#1e293b")
+            ax.spines["left"].set_linewidth(1.2)
+            ax.spines["bottom"].set_linewidth(1.2)
+            ax.spines["left"].set_zorder(3)
+            ax.spines["bottom"].set_zorder(3)
 
-            # 2. Vạch chia trục (Ticks) chuẩn SGK: bước 2 nếu trục quá cao, bước 1 nếu vừa phải
-            step_y = 2 if dy > 7 else 1
-            for vx in range(int(np.ceil(x_min_data)) + 1, int(np.floor(x_max_data))):
-                if vx == 0:
-                    continue
-                ax.plot([vx, vx], [-0.07, 0.07], color="black", lw=0.8)
-                ax.text(vx, -0.28, f"{vx}", fontsize=9.5, ha="center", va="top")
+            # Mũi tên trục thanh thoát
+            arrow_len_x = dx_units * 0.02
+            arrow_len_y = dy_units * 0.02
+            ax.plot(x_plot_max, 0, ">k", clip_on=False, markersize=5.5, zorder=5)
+            ax.plot(0, y_plot_max, "^k", clip_on=False, markersize=5.5, zorder=5)
 
-            for vy in range(int(np.ceil(y_plot_min)) + 1, int(np.floor(y_plot_max))):
-                if vy == 0 or vy % step_y != 0:
-                    continue
-                ax.plot([-0.07, 0.07], [vy, vy], color="black", lw=0.8)
-                ax.text(-0.2, vy, f"{vy}", fontsize=9.5, ha="right", va="center")
+            # Nhãn tên trục x, y và gốc O
+            ax.text(x_plot_max + 0.3, -0.35, r"$x$", fontsize=12, style="italic", ha="left", va="center")
+            ax.text(-0.35, y_plot_max + 0.3, r"$y$", fontsize=12, style="italic", ha="center", va="bottom")
+            ax.text(-0.35, -0.35, r"$O$", fontsize=11, style="italic", ha="right", va="top")
 
-            # 3. Tô miền diện tích gạch sọc chuẩn mực SGK
+            # Ẩn nhãn số 0 tại gốc
+            def _clean_zero_lbl(v, pos):
+                iv = int(round(v))
+                if abs(v) < 1e-4:
+                    return ""
+                if abs(v - iv) < 1e-4:
+                    return f"{iv}"
+                return ""
+
+            ax.xaxis.set_major_formatter(ticker.FuncFormatter(_clean_zero_lbl))
+            ax.yaxis.set_major_formatter(ticker.FuncFormatter(_clean_zero_lbl))
+            ax.tick_params(axis="both", which="major", labelsize=8.5, length=3, width=0.8, colors="#334155")
+
+            # 4. Tô miền diện tích tích phân
             ax.fill_between(
-                xs_fill, yf_fill, yg_fill,
-                facecolor="#f4f7fb",
-                edgecolor="#1d3557",
+                xs_core, yf_core, yg_core,
+                facecolor="#eff6ff",
+                edgecolor="#1d4ed8",
                 hatch="///",
-                linewidth=0.7,
-                alpha=0.9
+                linewidth=0.8,
+                alpha=0.85,
+                zorder=2
             )
 
-            # 4. Vẽ hai đường cong thanh lịch
-            line_f, = ax.plot(xs_2d, yf, color="#005f73", linewidth=1.8)
+            # 5. Vẽ hai đường cong sắc nét
+            xs_plot = np.linspace(x_plot_min, x_plot_max, 600)
+            ax.plot(xs_plot, f_n(xs_plot), color="#2563eb", linewidth=1.8, zorder=4, label=rf"$y = {sp.latex(f_expr)}$")
             if has_g:
-                line_g, = ax.plot(xs_2d, yg, color="#c85a17", linestyle="--", linewidth=1.6)
+                ax.plot(xs_plot, g_n(xs_plot), color="#dc2626", linestyle="--", linewidth=1.6, zorder=4, label=rf"$y = {sp.latex(g_expr)}$")
 
-            # 5. Viết tên đường cong trực tiếp lên nhánh đồ thị (Không dùng hộp Legend thô thiển)
-            ax.text(xs_2d[-25], yf[-25] + 0.35, rf"$y = {sp.latex(f_expr)}$", color="#005f73", fontsize=11, weight="bold", ha="center")
+            # 6. Đường dóng vuông góc tại các cận
+            ax.plot([x_a, x_a], [0, f_n(x_a)], color="#1d4ed8", linestyle=":", linewidth=1.1, zorder=3)
+            ax.plot([x_b, x_b], [0, f_n(x_b)], color="#1d4ed8", linestyle=":", linewidth=1.1, zorder=3)
             if has_g:
-                idx_g_lbl = int(len(xs_2d) * 0.72)
-                ax.text(xs_2d[idx_g_lbl], yg[idx_g_lbl] + 0.4, rf"$y = {sp.latex(g_expr)}$", color="#c85a17", fontsize=11, weight="bold", ha="center")
+                ax.plot([x_a, x_a], [0, g_n(x_a)], color="#dc2626", linestyle=":", linewidth=1.1, zorder=3)
+                ax.plot([x_b, x_b], [0, g_n(x_b)], color="#dc2626", linestyle=":", linewidth=1.1, zorder=3)
 
-            # 6. Đường dóng vuông góc xuống Ox tại a và b
-            ax.plot([x_a, x_a], [0, f_n(x_a)], color="#1d3557", linestyle=":", linewidth=1.1)
-            ax.plot([x_b, x_b], [0, f_n(x_b)], color="#1d3557", linestyle=":", linewidth=1.1)
-            if has_g:
-                ax.plot([x_a, x_a], [0, g_n(x_a)], color="#c85a17", linestyle=":", linewidth=1.1)
-                ax.plot([x_b, x_b], [0, g_n(x_b)], color="#c85a17", linestyle=":", linewidth=1.1)
+            # Chú giải thanh nhã đặt góc ngoài
+            ax.legend(loc="upper left", frameon=True, facecolor="white", edgecolor="#cbd5e1", fontsize=9.0)
 
         svg_buffer = io.StringIO()
         fig.savefig(svg_buffer, format="svg", bbox_inches="tight")
