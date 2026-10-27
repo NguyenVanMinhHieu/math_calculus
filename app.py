@@ -464,21 +464,31 @@ if btn_calc or "has_run" in st.session_state:
             ys_plot_f = f_n(xs_plot)
             ax.plot(xs_plot, ys_plot_f, color="#2563eb", linewidth=1.8, zorder=4)
 
-            # 1. Gắn nhãn (C): Đặt ngay đỉnh uốn cao nhất (cực đại) hoặc vị trí thoáng nhất của f
-            valid_f = np.where((ys_plot_f >= y_plot_min + 0.8) & (ys_plot_f <= y_plot_max - 0.8))[0]
-            if len(valid_f) > 0:
-                sub_f = valid_f[xs_plot[valid_f] <= x_b]
-                idx_f = sub_f[np.argmax(ys_plot_f[sub_f])] if len(sub_f) > 0 else valid_f[len(valid_f) // 2]
+            # 1. Gắn nhãn (C): Đặt cố định ở PHÍA TRÊN BÊN PHẢI (nhánh vươn lên của f)
+            # Tìm điểm trên nhánh f(x) ở góc trên bên phải (x > 0, gần đỉnh trên)
+            cand_c = np.where((xs_plot >= max(0.0, x_b * 0.5)) & (ys_plot_f >= y_plot_max * 0.55) & (ys_plot_f <= y_plot_max - 0.5))[0]
+            if len(cand_c) > 0:
+                idx_c = cand_c[len(cand_c) // 2]
                 ax.text(
-                    xs_plot[idx_f], ys_plot_f[idx_f] + 0.4,
+                    xs_plot[idx_c] - 0.25, ys_plot_f[idx_c],
                     rf"$(C): y = {sp.latex(f_expr)}$",
                     color="#1d4ed8", fontsize=10.5, weight="bold",
-                    ha="center", va="bottom",
+                    ha="right", va="center",
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
+                    zorder=6
+                )
+            else:
+                # Dự phòng nếu nhánh phải ra ngoài khung: neo tại góc trên phải
+                ax.text(
+                    x_plot_max - 0.5, y_plot_max - 0.6,
+                    rf"$(C): y = {sp.latex(f_expr)}$",
+                    color="#1d4ed8", fontsize=10.5, weight="bold",
+                    ha="right", va="top",
                     bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
                     zorder=6
                 )
 
-            # 2. Gắn nhãn (d): Đưa sang vùng ngoại biên bên trái (x < a) thoáng đãng, không kẹp vào giữa hai đường
+            # 2. Gắn nhãn (d): Đặt cố định ở PHÍA DƯỚI BÊN TRÁI (nhánh dưới của g)
             if has_g:
                 ys_plot_g = g_n(xs_plot)
                 ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="--", linewidth=1.6, zorder=4)
@@ -490,12 +500,12 @@ if btn_calc or "has_run" in st.session_state:
                     is_line = False
                 name_g = "(d)" if is_line else r"(C')"
 
-                # Tìm vị trí ngoại biên bên trái (x < a)
-                ext_left_g = np.where((xs_plot <= x_a - 0.4) & (ys_plot_g >= y_plot_min + 1.2) & (ys_plot_g <= y_plot_max - 1.2))[0]
-                if len(ext_left_g) > 0:
-                    idx_g = ext_left_g[len(ext_left_g) // 2]
+                # Tìm điểm trên g(x) ở góc dưới bên trái (x < 0, y < 0)
+                cand_d = np.where((xs_plot <= min(0.0, x_a * 0.5)) & (ys_plot_g <= y_plot_min * 0.45) & (ys_plot_g >= y_plot_min + 0.6))[0]
+                if len(cand_d) > 0:
+                    idx_d = cand_d[len(cand_d) // 2]
                     ax.text(
-                        xs_plot[idx_g] + 0.3, ys_plot_g[idx_g] - 0.25,
+                        xs_plot[idx_d] + 0.3, ys_plot_g[idx_d] - 0.15,
                         rf"${name_g}: y = {sp.latex(g_expr)}$",
                         color="#dc2626", fontsize=10.5, weight="bold",
                         ha="left", va="top",
@@ -503,17 +513,15 @@ if btn_calc or "has_run" in st.session_state:
                         zorder=6
                     )
                 else:
-                    ext_right_g = np.where((xs_plot >= x_b + 0.5) & (ys_plot_g >= y_plot_min + 1.0) & (ys_plot_g <= y_plot_max - 1.0))[0]
-                    if len(ext_right_g) > 0:
-                        idx_g = ext_right_g[len(ext_right_g) // 2]
-                        ax.text(
-                            xs_plot[idx_g] + 0.25, ys_plot_g[idx_g],
-                            rf"${name_g}: y = {sp.latex(g_expr)}$",
-                            color="#dc2626", fontsize=10.5, weight="bold",
-                            ha="left", va="center",
-                            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
-                            zorder=6
-                        )
+                    # Dự phòng nếu nhánh trái ra ngoài khung: neo tại góc dưới trái
+                    ax.text(
+                        x_plot_min + 0.5, y_plot_min + 0.6,
+                        rf"${name_g}: y = {sp.latex(g_expr)}$",
+                        color="#dc2626", fontsize=10.5, weight="bold",
+                        ha="left", va="bottom",
+                        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
+                        zorder=6
+                    )
 
             # 6. Đường dóng vuông góc tại các cận
             ax.plot([x_a, x_a], [0, f_n(x_a)], color="#1d4ed8", linestyle=":", linewidth=1.1, zorder=3)
