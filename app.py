@@ -450,13 +450,13 @@ if btn_calc or "has_run" in st.session_state:
             )
 
             # 5. Vẽ hai đường cong sắc nét
-            xs_plot = np.linspace(x_plot_min, x_plot_max, 600)
+            xs_plot = np.linspace(x_view_min, x_view_max, 600)
             ys_plot_f = f_n(xs_plot)
             ax.plot(xs_plot, ys_plot_f, color="#2563eb", linewidth=1.8, zorder=4)
 
             # 1. Gắn nhãn (C): CỐ ĐỊNH Ở MÉP NGOÀI GÓC TRÊN BÊN PHẢI (Hoàn toàn không chạm đồ thị)
             ax.text(
-                x_plot_max - 0.25, y_plot_max - 0.35,
+                x_view_max - 0.25, y_view_max - 0.35,
                 rf"$(C): y = {sp.latex(f_expr)}$",
                 color="#1d4ed8", fontsize=11, weight="bold",
                 ha="right", va="top",
@@ -477,7 +477,7 @@ if btn_calc or "has_run" in st.session_state:
                 name_g = "(d)" if is_line else r"(C')"
 
                 ax.text(
-                    x_plot_min + 0.25, y_plot_min + 0.35,
+                    x_view_min + 0.25, y_view_min + 0.35,
                     rf"${name_g}: y = {sp.latex(g_expr)}$",
                     color="#dc2626", fontsize=11, weight="bold",
                     ha="left", va="bottom",
