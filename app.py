@@ -367,7 +367,7 @@ if btn_calc or "has_run" in st.session_state:
             f_n = sp.lambdify(x_sym, f_expr, "numpy")
             g_n = sp.lambdify(x_sym, g_expr, "numpy")
 
-            # 1. Xác định tâm đối xứng và bán kính bao của miền tích phân
+            # 1. Ý TƯỞNG SƯ PHẠM: KHUNG NHÌN MỞ RỘNG (VIEWPORT) NHƯNG TRỤC TOẠ ĐỘ VẼ GỌN GÀNG
             xs_core = np.linspace(x_a, x_b, 350)
             yf_core = np.asarray(f_n(xs_core), dtype=float)
             yg_core = np.asarray(g_n(xs_core), dtype=float)
@@ -375,78 +375,68 @@ if btn_calc or "has_run" in st.session_state:
             y_min_core = min(np.nanmin(yf_core), np.nanmin(yg_core), 0.0)
             y_max_core = max(np.nanmax(yf_core), np.nanmax(yg_core), 0.0)
 
-            # Tính toạ độ tâm hình học (Center of Symmetry)
-            cx = (x_a + x_b) / 2.0
-            cy = (y_min_core + y_max_core) / 2.0
+            # A. Trục toạ độ Oxy ngắn gọn, tập trung trọng tâm bài toán
+            x_axis_min = min(x_a, 0.0) - 1.2
+            x_axis_max = max(x_b, 0.0) + 1.2
+            y_axis_min = min(y_min_core, 0.0) - 1.2
+            y_axis_max = max(y_max_core, 0.0) + 1.2
 
-            # Bán kính cân đối toả đều từ tâm (symmetric padding)
-            ry = max(abs(y_max_core - cy), abs(y_min_core - cy), abs(0.0 - cy)) + 2.0
-            # Giữ chiều ngang tối thiểu 65% chiều cao để khung hình vuông vắn
-            rx = max(abs(x_b - cx), abs(x_a - cx), abs(0.0 - cx) + 1.5, ry * 0.65, 3.8)
+            # B. Khung nhìn (Viewport) mở rộng bao bọc xung quanh, tạo không gian thở cho nhãn và đường cong
+            x_view_min = x_axis_min - 1.5
+            x_view_max = x_axis_max + 1.8
+            y_view_min = y_axis_min - 1.2
+            y_view_max = y_axis_max + 1.5
 
-            # Khóa mốc nguyên trực chuẩn
-            x_plot_min = int(np.floor(cx - rx))
-            x_plot_max = int(np.ceil(cx + rx))
-            y_plot_min = int(np.floor(cy - ry))
-            y_plot_max = int(np.ceil(cy + ry))
+            # Tỉ lệ trực chuẩn 1:1
+            dx_view = x_view_max - x_view_min
+            dy_view = y_view_max - y_view_min
 
-            # Giới hạn kích thước lưới trang nhã
-            dx_units = x_plot_max - x_plot_min
-            dy_units = y_plot_max - y_plot_min
-
-            unit_px = 0.55  # Tỉ lệ vật lý 1:1 chuẩn
-            fig_w = max(min(dx_units * unit_px, 10.0), 6.5)
-            fig_h = max(min(dy_units * unit_px, 10.0), 5.5)
+            unit_px = 0.52
+            fig_w = max(min(dx_view * unit_px, 9.5), 6.5)
+            fig_h = max(min(dy_view * unit_px, 10.0), 5.5)
 
             fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=140)
             fig.patch.set_facecolor("white")
             ax.set_facecolor("white")
 
-            # Khóa cứng tỉ lệ trực chuẩn 1:1
             ax.set_aspect("equal", adjustable="box")
-            ax.set_xlim(x_plot_min, x_plot_max)
-            ax.set_ylim(y_plot_min, y_plot_max)
+            ax.set_xlim(x_view_min, x_view_max)
+            ax.set_ylim(y_view_min, y_view_max)
+            ax.axis("off")  # Tắt khung viền cứng nhắc
 
-            # 2. Lưới ô vuông mờ nhã nhặn NVMH MATH-ARCH (mỗi ô là 1 đơn vị trực chuẩn)
-            ax.xaxis.set_major_locator(ticker.MultipleLocator(1.0))
-            ax.yaxis.set_major_locator(ticker.MultipleLocator(1.0))
-            ax.grid(True, which="major", color="#edf2f7", linestyle="-", linewidth=0.8, zorder=1)
+            # 2. Lưới ô vuông mờ nhã nhặn bao phủ vùng trọng tâm
+            grid_x_min = int(np.floor(x_axis_min))
+            grid_x_max = int(np.ceil(x_axis_max))
+            grid_y_min = int(np.floor(y_axis_min))
+            grid_y_max = int(np.ceil(y_axis_max))
 
-            # 3. Trục toạ độ Oxy xuyên tâm đối xứng
-            ax.spines["left"].set_position(("data", 0))
-            ax.spines["bottom"].set_position(("data", 0))
-            ax.spines["top"].set_visible(False)
-            ax.spines["right"].set_visible(False)
-            ax.spines["left"].set_color("#1e293b")
-            ax.spines["bottom"].set_color("#1e293b")
-            ax.spines["left"].set_linewidth(1.2)
-            ax.spines["bottom"].set_linewidth(1.2)
-            ax.spines["left"].set_zorder(3)
-            ax.spines["bottom"].set_zorder(3)
+            for gx in range(grid_x_min, grid_x_max + 1):
+                ax.plot([gx, gx], [grid_y_min, grid_y_max], color="#edf2f7", lw=0.7, zorder=1)
+            for gy in range(grid_y_min, grid_y_max + 1):
+                ax.plot([grid_x_min, grid_x_max], [gy, gy], color="#edf2f7", lw=0.7, zorder=1)
 
-            # Mũi tên trục thanh thoát
-            arrow_len_x = dx_units * 0.02
-            arrow_len_y = dy_units * 0.02
-            ax.plot(x_plot_max, 0, ">k", clip_on=False, markersize=5.5, zorder=5)
-            ax.plot(0, y_plot_max, "^k", clip_on=False, markersize=5.5, zorder=5)
+            # 3. Trục toạ độ Oxy thanh mảnh, chiều dài vừa vặn, kết thúc bằng mũi tên nhọn thanh thoát
+            arrow_style = dict(arrowstyle="-|>,head_width=0.22,head_length=0.45", color="#1e293b", lw=1.1, mutation_scale=12)
+            ax.annotate("", xy=(x_axis_max, 0), xytext=(x_axis_min, 0), arrowprops=arrow_style, zorder=3)
+            ax.annotate("", xy=(0, y_axis_max), xytext=(0, y_axis_min), arrowprops=arrow_style, zorder=3)
 
-            # Nhãn tên trục x, y và gốc O
-            ax.text(x_plot_max + 0.3, -0.35, r"$x$", fontsize=12, style="italic", ha="left", va="center")
-            ax.text(-0.35, y_plot_max + 0.3, r"$y$", fontsize=12, style="italic", ha="center", va="bottom")
-            ax.text(-0.35, -0.35, r"$O$", fontsize=11, style="italic", ha="right", va="top")
+            # Tên trục x, y đặt thoáng sau mũi tên
+            ax.text(x_axis_max + 0.25, 0, r"$x$", fontsize=12, style="italic", ha="left", va="center")
+            ax.text(0, y_axis_max + 0.25, r"$y$", fontsize=12, style="italic", ha="center", va="bottom")
+            ax.text(-0.25, -0.28, r"$O$", fontsize=11, style="italic", ha="right", va="top")
 
-            # Ẩn nhãn số 0 tại gốc
-            def _clean_zero_lbl(v, pos):
-                iv = int(round(v))
-                if abs(v) < 1e-4:
-                    return ""
-                if abs(v - iv) < 1e-4:
-                    return f"{iv}"
-                return ""
+            # Vạch chia đơn vị (Ticks) ngắn gọn trên đoạn trục
+            for vx in range(grid_x_min, grid_x_max):
+                if vx == 0:
+                    continue
+                ax.plot([vx, vx], [-0.07, 0.07], color="#1e293b", lw=0.8, zorder=3)
+                ax.text(vx, -0.25, f"{vx}", fontsize=9, ha="center", va="top", color="#334155")
 
-            ax.xaxis.set_major_formatter(ticker.FuncFormatter(_clean_zero_lbl))
-            ax.yaxis.set_major_formatter(ticker.FuncFormatter(_clean_zero_lbl))
-            ax.tick_params(axis="both", which="major", labelsize=8.5, length=3, width=0.8, colors="#334155")
+            for vy in range(grid_y_min, grid_y_max):
+                if vy == 0:
+                    continue
+                ax.plot([-0.07, 0.07], [vy, vy], color="#1e293b", lw=0.8, zorder=3)
+                ax.text(-0.2, vy, f"{vy}", fontsize=9, ha="right", va="center", color="#334155")
 
             # 4. Tô miền diện tích tích phân
             ax.fill_between(
