@@ -6,6 +6,7 @@ import io
 import re
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import matplotlib.patches as patches
 import numpy as np
 import streamlit as st
 import sympy as sp
@@ -441,8 +442,16 @@ if btn_calc or "has_run" in st.session_state:
                 ax.plot([-0.07, 0.07], [vy, vy], color="#1e293b", lw=0.8, zorder=3)
                 ax.text(-0.2, vy, f"{vy}", fontsize=9, ha="right", va="center", color="#334155")
 
-            # 4. Tô miền diện tích tích phân
-            ax.fill_between(
+            # 4. TẠO MẶT NẠ CLIP PATH CẮT ĐỒ THỊ TRỌN VẸN TRONG VÙNG LƯỚI
+            grid_clip = patches.Rectangle(
+                (x_axis_min, y_axis_min),
+                x_axis_max - x_axis_min,
+                y_axis_max - y_axis_min,
+                transform=ax.transData
+            )
+
+            # Tô miền diện tích và khóa cứng trong lưới
+            poly_fill = ax.fill_between(
                 xs_core, yf_core, yg_core,
                 facecolor="#eff6ff",
                 edgecolor="#1d4ed8",
@@ -451,11 +460,13 @@ if btn_calc or "has_run" in st.session_state:
                 alpha=0.85,
                 zorder=2
             )
+            poly_fill.set_clip_path(grid_clip)
 
-            # 5. Vẽ hai đường cong sắc nét
+            # 5. Vẽ hai đường cong và cắt trọn trong lưới (không tràn ra ngoài viền)
             xs_plot = np.linspace(x_view_min, x_view_max, 600)
             ys_plot_f = f_n(xs_plot)
-            ax.plot(xs_plot, ys_plot_f, color="#2563eb", linewidth=1.8, zorder=4)
+            line_f, = ax.plot(xs_plot, ys_plot_f, color="#2563eb", linewidth=1.8, zorder=4)
+            line_f.set_clip_path(grid_clip)
 
             # 1. Gắn nhãn (C): CỐ ĐỊNH Ở MÉP NGOÀI GÓC TRÊN BÊN PHẢI (Hoàn toàn không chạm đồ thị)
             ax.text(
@@ -470,7 +481,8 @@ if btn_calc or "has_run" in st.session_state:
             # 2. Gắn nhãn (d): CỐ ĐỊNH Ở MÉP NGOÀI GÓC DƯỚI BÊN TRÁI (Hoàn toàn không chạm đồ thị)
             if has_g:
                 ys_plot_g = g_n(xs_plot)
-                ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="-", linewidth=1.7, zorder=4)
+                line_g, = ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="-", linewidth=1.7, zorder=4)
+                line_g.set_clip_path(grid_clip)
 
                 is_line = False
                 try:
