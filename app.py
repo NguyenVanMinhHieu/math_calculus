@@ -380,8 +380,9 @@ if btn_calc or "has_run" in st.session_state:
             cy = (y_min_core + y_max_core) / 2.0
 
             # Bán kính cân đối toả đều từ tâm (symmetric padding)
-            rx = max(abs(x_b - cx), abs(x_a - cx), abs(0.0 - cx)) + 2.0
             ry = max(abs(y_max_core - cy), abs(y_min_core - cy), abs(0.0 - cy)) + 2.0
+            # Giữ chiều ngang tối thiểu 65% chiều cao để khung hình vuông vắn
+            rx = max(abs(x_b - cx), abs(x_a - cx), abs(0.0 - cx) + 1.5, ry * 0.65, 3.8)
 
             # Khóa mốc nguyên trực chuẩn
             x_plot_min = int(np.floor(cx - rx))
@@ -463,24 +464,25 @@ if btn_calc or "has_run" in st.session_state:
             ys_plot_f = f_n(xs_plot)
             ax.plot(xs_plot, ys_plot_f, color="#2563eb", linewidth=1.8, zorder=4)
 
-            # Gắn nhãn chuẩn SGK (C): y = f(x) trực tiếp trên nhánh đồ thị
+            # 1. Gắn nhãn (C): Đặt ngay đỉnh uốn cao nhất (cực đại) hoặc vị trí thoáng nhất của f
             valid_f = np.where((ys_plot_f >= y_plot_min + 0.8) & (ys_plot_f <= y_plot_max - 0.8))[0]
             if len(valid_f) > 0:
-                idx_f = valid_f[int(len(valid_f) * 0.2)]
+                sub_f = valid_f[xs_plot[valid_f] <= x_b]
+                idx_f = sub_f[np.argmax(ys_plot_f[sub_f])] if len(sub_f) > 0 else valid_f[len(valid_f) // 2]
                 ax.text(
-                    xs_plot[idx_f], ys_plot_f[idx_f] + 0.35,
+                    xs_plot[idx_f], ys_plot_f[idx_f] + 0.4,
                     rf"$(C): y = {sp.latex(f_expr)}$",
                     color="#1d4ed8", fontsize=10.5, weight="bold",
-                    ha="right", va="bottom",
-                    bbox=dict(boxstyle="round,pad=0.18", facecolor="white", edgecolor="none", alpha=0.88),
+                    ha="center", va="bottom",
+                    bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
                     zorder=6
                 )
 
+            # 2. Gắn nhãn (d): Đưa sang vùng ngoại biên bên trái (x < a) thoáng đãng, không kẹp vào giữa hai đường
             if has_g:
                 ys_plot_g = g_n(xs_plot)
                 ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="--", linewidth=1.6, zorder=4)
 
-                # Xác định ký hiệu (d) cho đường thẳng hoặc (C') cho đường cong
                 is_line = False
                 try:
                     is_line = sp.Poly(g_expr, x_sym).degree() <= 1
@@ -488,17 +490,30 @@ if btn_calc or "has_run" in st.session_state:
                     is_line = False
                 name_g = "(d)" if is_line else r"(C')"
 
-                valid_g = np.where((ys_plot_g >= y_plot_min + 0.8) & (ys_plot_g <= y_plot_max - 0.8))[0]
-                if len(valid_g) > 0:
-                    idx_g = valid_g[int(len(valid_g) * 0.85)]
+                # Tìm vị trí ngoại biên bên trái (x < a)
+                ext_left_g = np.where((xs_plot <= x_a - 0.4) & (ys_plot_g >= y_plot_min + 1.2) & (ys_plot_g <= y_plot_max - 1.2))[0]
+                if len(ext_left_g) > 0:
+                    idx_g = ext_left_g[len(ext_left_g) // 2]
                     ax.text(
-                        xs_plot[idx_g] + 0.25, ys_plot_g[idx_g] - 0.2,
+                        xs_plot[idx_g] + 0.3, ys_plot_g[idx_g] - 0.25,
                         rf"${name_g}: y = {sp.latex(g_expr)}$",
                         color="#dc2626", fontsize=10.5, weight="bold",
                         ha="left", va="top",
-                        bbox=dict(boxstyle="round,pad=0.18", facecolor="white", edgecolor="none", alpha=0.88),
+                        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
                         zorder=6
                     )
+                else:
+                    ext_right_g = np.where((xs_plot >= x_b + 0.5) & (ys_plot_g >= y_plot_min + 1.0) & (ys_plot_g <= y_plot_max - 1.0))[0]
+                    if len(ext_right_g) > 0:
+                        idx_g = ext_right_g[len(ext_right_g) // 2]
+                        ax.text(
+                            xs_plot[idx_g] + 0.25, ys_plot_g[idx_g],
+                            rf"${name_g}: y = {sp.latex(g_expr)}$",
+                            color="#dc2626", fontsize=10.5, weight="bold",
+                            ha="left", va="center",
+                            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.92),
+                            zorder=6
+                        )
 
             # 6. Đường dóng vuông góc tại các cận
             ax.plot([x_a, x_a], [0, f_n(x_a)], color="#1d4ed8", linestyle=":", linewidth=1.1, zorder=3)
