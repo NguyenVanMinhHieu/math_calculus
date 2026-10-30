@@ -255,7 +255,7 @@ if btn_calc or "has_run" in st.session_state:
             res = engine.calculate_area(f_expr, g_expr, a=a_val, b=b_val)
             st.success("✅ Đã tính xong Diện tích hình phẳng!")
         # Trình bày chi tiết Newton-Leibniz: F(x)|_a^b = F(b) - F(a)
-                    diff_expr = f_expr - g_expr
+                diff_expr = f_expr - g_expr
                     F_expr = sp.integrate(diff_expr, x_sym)
                     exact_sub_intervals = res.exact_intervals if res.exact_intervals else [(sp.sympify(a_val), sp.sympify(b_val))]
         
