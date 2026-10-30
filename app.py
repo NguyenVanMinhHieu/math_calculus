@@ -258,6 +258,9 @@ if btn_calc or "has_run" in st.session_state:
             # Kết quả tính toán diện tích gọn gàng, súc tích
             with st.container(border=True):
                 st.markdown("### 💡 Kết quả Tính toán Diện tích")
+                diff_expr = f_expr - g_expr
+                F_expr = sp.integrate(diff_expr, x_sym)
+                st.latex(rf"F(x) = \int \left( {sp.latex(diff_expr)} ight) dx = {sp.latex(F_expr)}")
                 st.latex(r"S = " + res.latex_str)
                 st.markdown(f"**Giá trị xấp xỉ:** $S \approx {res.numeric_value:.6f}$")
         
