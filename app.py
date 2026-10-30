@@ -254,39 +254,13 @@ if btn_calc or "has_run" in st.session_state:
         if not is_volume:
             res = engine.calculate_area(f_expr, g_expr, a=a_val, b=b_val)
             st.success("✅ Đã tính xong Diện tích hình phẳng!")
-        # Trình bày chi tiết Newton-Leibniz: F(x)|_a^b = F(b) - F(a)
-                diff_expr = f_expr - g_expr
-                    F_expr = sp.integrate(diff_expr, x_sym)
-                    exact_sub_intervals = res.exact_intervals if res.exact_intervals else [(sp.sympify(a_val), sp.sympify(b_val))]
+            
+            # Kết quả tính toán diện tích gọn gàng, súc tích
+            with st.container(border=True):
+                st.markdown("### 💡 Kết quả Tính toán Diện tích")
+                st.latex(r"S = " + res.latex_str)
+                st.markdown(f"**Giá trị xấp xỉ:** $S \approx {res.numeric_value:.6f}$")
         
-                    with st.container(border=True):
-                        st.markdown("### 💡 Lời giải Chi tiết Tích phân (Newton–Leibniz)")
-                        st.latex(r"S = \int_{" + str(label_a) + r"}^{" + str(label_b) + r"} \left| " + sp.latex(diff_expr) + r" \right| dx")
-                        st.markdown(f"1. Nguyên hàm liên kết: $F(x) = \int \left({sp.latex(diff_expr)}\right) dx = {sp.latex(F_expr)}$")
-                        st.markdown("2. Áp dụng công thức Newton–Leibniz:")
-        
-                        if len(exact_sub_intervals) == 1:
-                            sa, sb = exact_sub_intervals[0]
-                            fa_val = F_expr.subs(x_sym, sa)
-                            fb_val = F_expr.subs(x_sym, sb)
-                            st.latex(
-                                r"S = \left. " + sp.latex(F_expr) + r" \right|_{ " + sp.latex(sa) + r" }^{ " + sp.latex(sb) + r" } "
-                                r"= F(" + sp.latex(sb) + r") - F(" + sp.latex(sa) + r") "
-                                r"= \left( " + sp.latex(fb_val) + r" \right) - \left( " + sp.latex(fa_val) + r" \right) "
-                                r"= " + res.latex_str
-                            )
-                        else:
-                            for idx_k, (sa, sb) in enumerate(exact_sub_intervals):
-                                fa_val = F_expr.subs(x_sym, sa)
-                                fb_val = F_expr.subs(x_sym, sb)
-                                area_k = sp.simplify(sp.Abs(fb_val - fa_val))
-                                st.latex(
-                                    r"S_{" + str(idx_k + 1) + r"} = \left. " + sp.latex(F_expr) + r" \right|_{ " + sp.latex(sa) + r" }^{ " + sp.latex(sb) + r" } "
-                                    r"= \left( " + sp.latex(fb_val) + r" \right) - \left( " + sp.latex(fa_val) + r" \right) = " + sp.latex(area_k)
-                                )
-                            st.latex(r"\Rightarrow S = \sum S_i = " + res.latex_str)
-        
-                        st.markdown(f"**Kết luận xấp xỉ:** $S \approx {res.numeric_value:.6f}$")
         else:
             res = engine.calculate_rotation_volume_ox(f_expr, g_expr, a=a_val, b=b_val)
             st.success("✅ Đã tính xong Thể tích khối tròn xoay quanh Ox!")
