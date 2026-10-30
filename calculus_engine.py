@@ -178,6 +178,9 @@ class CalculusGeometryEngine:
             total_area += sp.Abs(sub_integral)
             intervals_used.append((float(sub_a.evalf()), float(sub_b.evalf())))
 
+        # Tối ưu hóa biểu thức giải tích, nhận diện hằng số pi để tránh phân số thập phân cồng kềnh
+        total_area = sp.nsimplify(total_area, constants=[sp.pi])
+        total_area = sp.trigsimp(total_area)
         total_area = sp.simplify(total_area)
         numeric_val = float(total_area.evalf())
 
