@@ -1,4 +1,4 @@
-"""Web App Giải tích Hình học THPT - Nhãn tỉ lệ x:y bên phải và Ô điều chỉnh đơn vị vẽ."""
+"""Web App Giải tích Hình học THPT - Ánh xạ 1-1 chuẩn mực SGK."""
 
 from __future__ import annotations
 
@@ -93,20 +93,17 @@ def draw_single_revolution_solid(
     ax.set_ylim(y_bot, y_top_arrow * 1.08)
     ax.set_aspect(aspect_ratio)
 
-    # 1. Trục Ox xuyên tâm
     ax.plot([x_min, x_a], [0, 0], color="black", linewidth=1.2)
     ax.plot([x_a, x_b], [0, 0], color="black", linestyle="--", linewidth=1.2)
     ax.plot([x_b, x_max], [0, 0], color="black", linewidth=1.2)
     ax.plot(x_max, 0, ">k", clip_on=False, markersize=5)
     ax.text(x_max, -y_lim * 0.09, r"$x$", fontsize=11, style="italic")
 
-    # Mốc a và b
     ax.plot(x_a, 0, "ko", markersize=4.0)
     ax.plot(x_b, 0, "ko", markersize=4.0)
     ax.text(x_a, -y_lim * 0.18, rf"${label_a}$", fontsize=11, ha="center")
     ax.text(x_b, -y_lim * 0.18, rf"${label_b}$", fontsize=11, ha="center")
 
-    # 2. Trục tung Oy và gốc O
     if x_min <= 0 <= x_max:
         ax.plot([0, 0], [-y_lim * 0.95, y_top_arrow], color="black", linewidth=1.2)
         ax.plot(0, y_top_arrow, "^k", clip_on=False, markersize=5)
@@ -115,7 +112,6 @@ def draw_single_revolution_solid(
         ax.text(-dx * 1.8, -y_lim * 0.14, r"$O$", fontsize=10, style="italic",
                 bbox=dict(boxstyle="square,pad=0.08", facecolor="white", edgecolor="none", alpha=0.85))
 
-    # 3. Miền phẳng gốc (gạch sọc)
     ax.fill_between(xs, ys_real, 0, facecolor="#fce4ec", edgecolor=hatch_color, hatch="///", linewidth=0.6, alpha=0.9)
 
     ha = float(ys_real[0])
@@ -123,11 +119,9 @@ def draw_single_revolution_solid(
     ax.plot([x_a, x_a], [0, ha], color=hatch_color, linestyle="--", linewidth=1.1)
     ax.plot([x_b, x_b], [0, hb], color=hatch_color, linestyle="--", linewidth=1.1)
 
-    # 4. Đường đồ thị gốc và đối xứng
     ax.plot(xs, ys_real, color=main_color, linewidth=2.0)
     ax.plot(xs, ys_refl, color=main_color, linestyle="--", linewidth=1.5, alpha=0.75)
 
-    # 5. Hai Elip tại a và b
     rx = span * 0.045
     r_a = abs(ha)
     r_b = abs(hb)
@@ -142,7 +136,6 @@ def draw_single_revolution_solid(
         t_full = np.linspace(0, 2 * np.pi, 120)
         ax.plot(x_b + rx * np.cos(t_full), r_b * np.sin(t_full), color=main_color, linestyle="-", linewidth=1.8)
 
-    # 6. NHÃN TỈ LỆ x:y BÊN PHẢI HÌNH VẼ
     scale_str = "x : y = 1 : 1" if abs(aspect_ratio - 1.0) < 1e-4 else f"x : y = 1 : {aspect_ratio:g}"
     ax.text(
         0.96, 0.94, scale_str,
@@ -209,17 +202,16 @@ if use_custom_bounds:
     else:
         st.sidebar.error("Định dạng: [a; b], ví dụ: [-1; 2]")
 
-# ĐIỀU CHỈNH TỈ LỆ ĐƠN VỊ VẼ HÌNH (DÙNG Ô NHẬP SỐ CHÍNH XÁC, MẶC ĐỊNH 1.0)
 st.sidebar.markdown("---")
 st.sidebar.subheader("📐 Tỉ lệ đơn vị vẽ hình")
 axis_ratio = st.sidebar.number_input(
     "Tỉ lệ trục y (so với x):",
     min_value=0.1,
     max_value=10.0,
-    value=1.00,  # Mặc định chuẩn 1:1 theo ý Thầy
+    value=1.00,
     step=0.1,
     format="%.2f",
-    help="Mặc định là 1.00 (Tỉ lệ chuẩn x:y = 1:1). Giáo viên có thể điều chỉnh để tăng/giảm tỉ lệ vẽ theo ý muốn.",
+    help="Mặc định là 1.00 (Tỉ lệ chuẩn x:y = 1:1).",
 )
 
 btn_calc = st.sidebar.button("🚀 Bắt đầu tính toán & Dựng hình", type="primary", use_container_width=True)
@@ -253,17 +245,77 @@ if btn_calc or "has_run" in st.session_state:
 
         if not is_volume:
             res = engine.calculate_area(f_expr, g_expr, a=a_val, b=b_val)
+            all_pts_num = [pt for interval in res.intervals for pt in interval]
+            x_a, x_b = min(all_pts_num), max(all_pts_num)
+            label_a = f"{x_a:g}"
+            label_b = f"{x_b:g}"
+            if res.exact_intervals:
+                label_a = sp.latex(res.exact_intervals[0][0])
+                label_b = sp.latex(res.exact_intervals[-1][1])
             st.success("✅ Đã tính xong Diện tích hình phẳng!")
             
-            # Kết quả tính toán diện tích gọn gàng, súc tích
             with st.container(border=True):
-                st.markdown("### 💡 Kết quả Tính toán Diện tích")
-                diff_expr = f_expr - g_expr
+                st.markdown("### 💡 Các bước giải Toán Sư phạm: Diện tích Hình phẳng")
+                diff_expr = sp.simplify(f_expr - g_expr)
                 F_expr = sp.integrate(diff_expr, x_sym)
-                st.latex(rf"F(x) = \int \left( {sp.latex(diff_expr)} ight) dx = {sp.latex(F_expr)}")
-                st.latex(r"S = " + res.latex_str)
-                st.markdown(f"**Giá trị xấp xỉ:** $S \approx {res.numeric_value:.6f}$")
-        
+
+                def fmt_math(val) -> str:
+                    try:
+                        sym = sp.nsimplify(val, rational=True)
+                        return sp.latex(sym)
+                    except Exception:
+                        v = float(val)
+                        return f"{int(v)}" if v.is_integer() else f"{v:.4f}"
+
+                st.markdown("**Bước 1. Phương trình hoành độ giao điểm:**")
+                st.latex(rf"f(x) - g(x) = 0 \iff {sp.latex(diff_expr)} = 0")
+
+                inner_roots = []
+                if len(res.intervals) > 1:
+                    for inv in res.intervals[:-1]:
+                        inner_roots.append(fmt_math(inv[1]))
+
+                lbl_a_str = fmt_math(x_a)
+                lbl_b_str = fmt_math(x_b)
+                if inner_roots:
+                    roots_str = ", ".join([rf"x = {r}" for r in inner_roots])
+                    st.markdown(rf"Trên khoảng $({lbl_a_str};\, {lbl_b_str})$, phương trình có nghiệm: ${roots_str}$.")
+                else:
+                    st.markdown(rf"Trên khoảng $({lbl_a_str};\, {lbl_b_str})$, phương trình không có nghiệm.")
+
+                st.markdown("**Bước 2. Tìm một nguyên hàm của hiệu hai hàm số:**")
+                st.latex(rf"F(x) = \int \left( {sp.latex(diff_expr)} \right) dx = {sp.latex(F_expr)} + C")
+
+                st.markdown("**Bước 3. Diện tích hình phẳng cần tìm:**")
+                if len(res.intervals) == 1:
+                    sub_a, sub_b = res.intervals[0]
+                    sa_str, sb_str = fmt_math(sub_a), fmt_math(sub_b)
+                    st.latex(
+                        rf"S = \int_{{{sa_str}}}^{{{sb_str}}} \left| f(x) - g(x) \right| dx "
+                        rf"= \left| F({sb_str}) - F({sa_str}) \right| "
+                        rf"= {res.latex_str} \approx {res.numeric_value:.4f}"
+                    )
+                else:
+                    st.markdown("*Tách tích phân theo các nghiệm thuộc đoạn xác định:*")
+                    sum_parts = []
+                    val_parts = []
+                    for idx_inv, (sub_a, sub_b) in enumerate(res.intervals):
+                        sa_str, sb_str = fmt_math(sub_a), fmt_math(sub_b)
+                        val_b = F_expr.subs(x_sym, sp.sympify(sub_b))
+                        val_a = F_expr.subs(x_sym, sp.sympify(sub_a))
+                        sub_area = sp.simplify(sp.Abs(val_b - val_a))
+                        sub_area_str = fmt_math(sub_area)
+                        sum_parts.append(rf"\left| F({sb_str}) - F({sa_str}) \right|")
+                        val_parts.append(sub_area_str)
+                        st.latex(
+                            rf"S_{{{idx_inv + 1}}} = \int_{{{sa_str}}}^{{{sb_str}}} \left| f(x) - g(x) \right| dx "
+                            rf"= \left| F({sb_str}) - F({sa_str}) \right| = {sub_area_str}"
+                        )
+                    st.latex(
+                        rf"\Rightarrow S = " + " + ".join(sum_parts) + 
+                        rf" = " + " + ".join(val_parts) + 
+                        rf" = {res.latex_str} \approx {res.numeric_value:.4f}"
+                    )
         else:
             res = engine.calculate_rotation_volume_ox(f_expr, g_expr, a=a_val, b=b_val)
             st.success("✅ Đã tính xong Thể tích khối tròn xoay quanh Ox!")
@@ -277,107 +329,97 @@ if btn_calc or "has_run" in st.session_state:
             label_a = sp.latex(res.exact_intervals[0][0])
             label_b = sp.latex(res.exact_intervals[-1][1])
 
-        # Chi tiết tính toán Bản chất Sư phạm
-        if is_volume and has_g:
+        if is_volume:
             with st.container(border=True):
-                st.markdown("### 💡 Chi tiết tính toán Bản chất Sư phạm: $V = |V_1 - V_2|$")
+                st.markdown("### 💡 Các bước giải Toán Sư phạm: Thể tích Khối tròn xoay (quanh Ox)")
+                diff_sq = sp.simplify(f_expr**2 - g_expr**2) if has_g else sp.simplify(f_expr**2)
+                
+                # Bước 1
+                st.markdown("**Bước 1. Phương trình hoành độ giao điểm bán kính:**")
+                if has_g:
+                    st.latex(rf"f^2(x) - g^2(x) = 0 \iff {sp.latex(diff_sq)} = 0")
+                else:
+                    st.latex(rf"f(x) = 0 \iff {sp.latex(f_expr)} = 0")
+                
+                inner_roots = []
+                inner_roots = []
+                if res.exact_intervals and len(res.exact_intervals) > 1:
+                    for exact_inv in res.exact_intervals[:-1]:
+                        exact_r = exact_inv[1]
+                        inner_roots.append(sp.latex(exact_r))
+                    st.markdown(rf"Trên khoảng $({label_a}; {label_b})$, phương trình có nghiệm: $x \in \{{{', '.join(inner_roots)}\}}$")
+                else:
+                    st.markdown(rf"Trên khoảng $({label_a}; {label_b})$, phương trình không có nghiệm đổi dấu.")
 
-                sym_a = sp.nsimplify(x_a, rational=True)
-                sym_b = sp.nsimplify(x_b, rational=True)
+                # Bước 2
+                st.markdown("**Bước 2. Công thức thể tích tổng quát (Phương pháp hình vành khăn):**")
+                if has_g:
+                    st.latex(rf"V_{{Ox}} = \pi \int_{{{label_a}}}^{{{label_b}}} \left| f^2(x) - g^2(x) \right| \, dx = \pi \int_{{{label_a}}}^{{{label_b}}} \left| {sp.latex(diff_sq)} \right| \, dx")
+                else:
+                    st.latex(rf"V_{{Ox}} = \pi \int_{{{label_a}}}^{{{label_b}}} [f(x)]^2 \, dx = \pi \int_{{{label_a}}}^{{{label_b}}} {sp.latex(diff_sq)} \, dx")
 
-                v1_integral = sp.integrate(f_expr**2, (x_sym, sym_a, sym_b))
-                v1_total = sp.simplify(sp.pi * v1_integral)
-                st.markdown(f"**1. Khối 1 do $y = {sp.latex(f_expr)}$ quay quanh $Ox$ trên $[{label_a}; {label_b}]$:**")
-                st.latex(
-                    rf"V_1 = \pi \int_{{{label_a}}}^{{{label_b}}} \left({sp.latex(f_expr)}\right)^2 dx "
-                    rf"= \pi \int_{{{label_a}}}^{{{label_b}}} \left({sp.latex(sp.expand(f_expr**2))}\right) dx "
-                    rf"= {sp.latex(v1_total)} \approx {float(v1_total.evalf()):.4f}"
-                )
+                # Bước 3
+                st.markdown("**Bước 3. Tìm một nguyên hàm của biểu thức dưới dấu tích phân:**")
+                H_expr = sp.integrate(diff_sq, x_sym)
+                st.latex(rf"H(x) = \int \left( {sp.latex(diff_sq)} \right) \, dx = {sp.latex(H_expr)} + C")
 
-                v2_integral = sp.integrate(g_expr**2, (x_sym, sym_a, sym_b))
-                v2_total = sp.simplify(sp.pi * v2_integral)
-                st.markdown(f"**2. Khối 2 do $y = {sp.latex(g_expr)}$ quay quanh $Ox$ trên $[{label_a}; {label_b}]$:**")
-                st.latex(
-                    rf"V_2 = \pi \int_{{{label_a}}}^{{{label_b}}} \left({sp.latex(g_expr)}\right)^2 dx "
-                    rf"= \pi \int_{{{label_a}}}^{{{label_b}}} \left({sp.latex(sp.expand(g_expr**2))}\right) dx "
-                    rf"= {sp.latex(v2_total)} \approx {float(v2_total.evalf()):.4f}"
-                )
-
-                st.markdown("**3. Kết luận thể tích khối tròn xoay (Lấy Khối 1 trừ Khối 2):**")
-                exact_sub_intervals = res.exact_intervals if res.exact_intervals else [(sp.sympify(a), sp.sympify(b)) for a, b in res.intervals]
-
-                if len(exact_sub_intervals) == 1:
+                # Bước 4
+                st.markdown("**Bước 4. Tách tích phân theo các nghiệm và tính thể tích:**")
+                if len(res.exact_intervals) > 1:
+                    sum_parts = []
+                    val_parts = []
+                    for idx_inv, (sub_a, sub_b) in enumerate(res.exact_intervals):
+                        sa_str = sp.latex(sub_a)
+                        sb_str = sp.latex(sub_b)
+                        val_a = H_expr.subs(x_sym, sub_a)
+                        val_b = H_expr.subs(x_sym, sub_b)
+                        sub_vol = sp.simplify(sp.Abs(val_b - val_a))
+                        sub_vol_latex = sp.latex(sub_vol)
+                        sum_parts.append(rf"\left| H({sb_str}) - H({sa_str}) \right|")
+                        val_parts.append(sub_vol_latex)
+                        st.latex(
+                            rf"V_{{{idx_inv + 1}}} = \pi \int_{{{sa_str}}}^{{{sb_str}}} \left| {sp.latex(diff_sq)} \right| dx "
+                            rf"= \pi \left| H({sb_str}) - H({sa_str}) \right| = \pi \cdot {sub_vol_latex}"
+                        )
                     st.latex(
-                        rf"V = |V_1 - V_2| = \left| {sp.latex(v1_total)} - {sp.latex(v2_total)} \right| "
-                        rf"= {res.latex_str} \approx {res.numeric_value:.6f}"
+                        rf"\Rightarrow V_{{Ox}} = \pi \left( " + " + ".join(sum_parts) + 
+                        rf" \right) = {res.latex_str} \approx {res.numeric_value:.6f}"
                     )
                 else:
-                    st.write("📌 *Vì hai đồ thị cắt nhau trên đoạn tính phân, ta phân rã và lấy hiệu trên từng khoảng:*")
-                    for idx_inv, (sub_a, sub_b) in enumerate(exact_sub_intervals):
-                        v1_sub = sp.simplify(sp.pi * sp.integrate(f_expr**2, (x_sym, sub_a, sub_b)))
-                        v2_sub = sp.simplify(sp.pi * sp.integrate(g_expr**2, (x_sym, sub_a, sub_b)))
-                        v_sub = sp.simplify(sp.Abs(v1_sub - v2_sub))
-                        st.latex(
-                            rf"\text{{Đoạn }} [{sp.latex(sub_a)}; {sp.latex(sub_b)}]:\quad "
-                            rf"V^{{({idx_inv + 1})}} = \left| V_1^{{({idx_inv + 1})}} - V_2^{{({idx_inv + 1})}} \right| "
-                            rf"= \left| {sp.latex(v1_sub)} - {sp.latex(v2_sub)} \right| = {sp.latex(v_sub)}"
-                        )
-                    st.latex(rf"\Rightarrow V_{{Ox}} = \sum V^{{(i)}} = {res.latex_str} \approx {res.numeric_value:.6f}")
-
+                    st.latex(
+                        rf"V_{{Ox}} = \pi \left| H({label_b}) - H({label_a}) \right| = {res.latex_str} \approx {res.numeric_value:.6f}"
+                    )
         tikz_code = engine.generate_tikz(f_expr, g_expr, a=a_val, b=b_val, intervals=res.intervals, exact_intervals=res.exact_intervals, is_volume=is_volume)
 
-        # DỰNG HÌNH VỚI NHÃN TỈ LỆ x : y BÊN PHẢI
         if is_volume:
             if not has_g:
                 fig, ax = plt.subplots(figsize=(8.5, 5.0), dpi=130)
                 draw_single_revolution_solid(
-                    ax=ax,
-                    h_expr=f_expr,
-                    x_var=x_sym,
-                    x_a=x_a,
-                    x_b=x_b,
-                    label_a=label_a,
-                    label_b=label_b,
+                    ax=ax, h_expr=f_expr, x_var=x_sym, x_a=x_a, x_b=x_b,
+                    label_a=label_a, label_b=label_b,
                     title_str=rf"Khối tròn xoay do $y = {sp.latex(f_expr)}$ quay quanh $Ox$",
-                    main_color="#005f73",
-                    hatch_color="#c2185b",
-                    aspect_ratio=axis_ratio,
+                    main_color="#005f73", hatch_color="#c2185b", aspect_ratio=axis_ratio,
                 )
             else:
                 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.5, 4.8), dpi=130)
                 draw_single_revolution_solid(
-                    ax=ax1,
-                    h_expr=f_expr,
-                    x_var=x_sym,
-                    x_a=x_a,
-                    x_b=x_b,
-                    label_a=label_a,
-                    label_b=label_b,
+                    ax=ax1, h_expr=f_expr, x_var=x_sym, x_a=x_a, x_b=x_b,
+                    label_a=label_a, label_b=label_b,
                     title_str=rf"(1) Khối $V_1$ do $y = {sp.latex(f_expr)}$ quay",
-                    main_color="#005f73",
-                    hatch_color="#c2185b",
-                    aspect_ratio=axis_ratio,
+                    main_color="#005f73", hatch_color="#c2185b", aspect_ratio=axis_ratio,
                 )
                 draw_single_revolution_solid(
-                    ax=ax2,
-                    h_expr=g_expr,
-                    x_var=x_sym,
-                    x_a=x_a,
-                    x_b=x_b,
-                    label_a=label_a,
-                    label_b=label_b,
+                    ax=ax2, h_expr=g_expr, x_var=x_sym, x_a=x_a, x_b=x_b,
+                    label_a=label_a, label_b=label_b,
                     title_str=rf"(2) Khối $V_2$ do $y = {sp.latex(g_expr)}$ quay",
-                    main_color="#ca6702",
-                    hatch_color="#d97706",
-                    aspect_ratio=axis_ratio,
+                    main_color="#ca6702", hatch_color="#d97706", aspect_ratio=axis_ratio,
                 )
                 fig.subplots_adjust(top=0.88, wspace=0.22)
         else:
-            # DIỆN TÍCH HÌNH PHẲNG: LƯỚI TRỰC CHUẨN CÂN XỨNG (NVMH MATH-ARCH STANDARD)
+            # DIỆN TÍCH HÌNH PHẲNG: ÁNH XẠ HOÀN HẢO 1-1 VỚI TIKZ
             f_n = sp.lambdify(x_sym, f_expr, "numpy")
             g_n = sp.lambdify(x_sym, g_expr, "numpy")
 
-            # 1. VIEWPORT THÍCH ỨNG THÔNG MINH THEO ĐỘ DÀI CÔNG THỨC VÀ BIÊN ĐỘ ĐỒ THỊ
             xs_core = np.linspace(x_a, x_b, 350)
             yf_core = np.asarray(f_n(xs_core), dtype=float)
             yg_core = np.asarray(g_n(xs_core), dtype=float)
@@ -385,35 +427,17 @@ if btn_calc or "has_run" in st.session_state:
             y_min_core = min(np.nanmin(yf_core), np.nanmin(yg_core), 0.0)
             y_max_core = max(np.nanmax(yf_core), np.nanmax(yg_core), 0.0)
 
-            # Đo độ dài chuỗi công thức LaTeX để cấp không gian thở tương xứng
-            len_f_str = len(sp.latex(f_expr))
-            len_g_str = len(sp.latex(g_expr))
-            max_formula_len = max(len_f_str, len_g_str)
+            x_axis_min = int(np.floor(min(x_a, 0.0) - 2.0))
+            x_axis_max = int(np.ceil(max(x_b, 0.0) + 2.0))
+            y_axis_min = int(np.floor(min(y_min_core, 0.0) - 2.0))
+            y_axis_max = int(np.ceil(max(y_max_core, 0.0) + 2.0))
 
-            # Tự động tính toán độ mở rộng Viewport (adaptive padding)
-            pad_x_formula = max(max_formula_len * 0.12, 1.8)
-            pad_y_formula = 2.0
+            x_view_min = x_axis_min - 0.5
+            x_view_max = x_axis_max + 0.5
+            y_view_min = y_axis_min - 0.5
+            y_view_max = y_axis_max + 0.5
 
-            # Giới hạn trục toạ độ Oxy phủ kín mốc nguyên
-            x_axis_min = int(np.floor(min(x_a, 0.0) - pad_x_formula))
-            x_axis_max = int(np.ceil(max(x_b, 0.0) + pad_x_formula))
-            y_axis_min = int(np.floor(min(y_min_core, 0.0) - pad_y_formula))
-            y_axis_max = int(np.ceil(max(y_max_core, 0.0) + pad_y_formula))
-
-            # Viewport mở rộng thêm 0.8 đơn vị để mũi tên và chữ x, y không chạm viền
-            x_view_min = x_axis_min - 0.8
-            x_view_max = x_axis_max + 0.8
-            y_view_min = y_axis_min - 0.8
-            y_view_max = y_axis_max + 0.8
-
-            dx_view = x_view_max - x_view_min
-            dy_view = y_view_max - y_view_min
-
-            unit_px = 0.52
-            fig_w = max(min(dx_view * unit_px, 10.0), 6.5)
-            fig_h = max(min(dy_view * unit_px, 10.0), 5.5)
-
-            fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=140)
+            fig, ax = plt.subplots(figsize=(7.5, 6.0), dpi=140)
             fig.patch.set_facecolor("white")
             ax.set_facecolor("white")
 
@@ -422,23 +446,31 @@ if btn_calc or "has_run" in st.session_state:
             ax.set_ylim(y_view_min, y_view_max)
             ax.axis("off")
 
-            # 2. Lưới ô vuông mờ nhã nhặn bao phủ trọn vẹn trục
+            # Lưới ô vuông mờ chuẩn SGK
             for gx in range(x_axis_min, x_axis_max + 1):
                 ax.plot([gx, gx], [y_axis_min, y_axis_max], color="#edf2f7", lw=0.7, zorder=1)
             for gy in range(y_axis_min, y_axis_max + 1):
                 ax.plot([x_axis_min, x_axis_max], [gy, gy], color="#edf2f7", lw=0.7, zorder=1)
 
-            # 3. Trục toạ độ Oxy thanh mảnh, bao trọn toàn bộ các mốc chia
-            arrow_style = dict(arrowstyle="-|>,head_width=0.22,head_length=0.45", color="#1e293b", lw=1.1, mutation_scale=12)
-            ax.annotate("", xy=(x_axis_max + 0.5, 0), xytext=(x_axis_min - 0.2, 0), arrowprops=arrow_style, zorder=3)
-            ax.annotate("", xy=(0, y_axis_max + 0.5), xytext=(0, y_axis_min - 0.2), arrowprops=arrow_style, zorder=3)
+            # Khung viền Bounding Box (Clip Box)
+            grid_clip = patches.Rectangle(
+                (x_axis_min, y_axis_min),
+                x_axis_max - x_axis_min,
+                y_axis_max - y_axis_min,
+                transform=ax.transData,
+                fill=False, edgecolor="#cbd5e1", lw=0.8, zorder=2
+            )
+            ax.add_patch(grid_clip)
 
-            # Nhãn tên trục và gốc O
-            ax.text(x_axis_max + 0.65, 0, r"$x$", fontsize=12, style="italic", ha="left", va="center")
-            ax.text(0, y_axis_max + 0.65, r"$y$", fontsize=12, style="italic", ha="center", va="bottom")
+            # Trục toạ độ Oxy thanh mảnh
+            arrow_style = dict(arrowstyle="-|>,head_width=0.22,head_length=0.45", color="#1e293b", lw=1.1, mutation_scale=12)
+            ax.annotate("", xy=(x_axis_max + 0.4, 0), xytext=(x_axis_min - 0.2, 0), arrowprops=arrow_style, zorder=3)
+            ax.annotate("", xy=(0, y_axis_max + 0.4), xytext=(0, y_axis_min - 0.2), arrowprops=arrow_style, zorder=3)
+
+            ax.text(x_axis_max + 0.55, 0, r"$x$", fontsize=12, style="italic", ha="left", va="center")
+            ax.text(0, y_axis_max + 0.55, r"$y$", fontsize=12, style="italic", ha="center", va="bottom")
             ax.text(-0.25, -0.28, r"$O$", fontsize=11, style="italic", ha="right", va="top")
 
-            # Vạch chia đơn vị (Ticks) đều đặn trên cả 2 trục
             for vx in range(x_axis_min, x_axis_max + 1):
                 if vx == 0:
                     continue
@@ -451,70 +483,50 @@ if btn_calc or "has_run" in st.session_state:
                 ax.plot([-0.07, 0.07], [vy, vy], color="#1e293b", lw=0.8, zorder=3)
                 ax.text(-0.2, vy, f"{vy}", fontsize=9, ha="right", va="center", color="#334155")
 
-            # 4. TẠO MẶT NẠ CLIP PATH CẮT ĐỒ THỊ TRỌN VẸN TRONG VÙNG LƯỚI
-            grid_clip = patches.Rectangle(
-                (x_axis_min, y_axis_min),
-                x_axis_max - x_axis_min,
-                y_axis_max - y_axis_min,
-                transform=ax.transData
-            )
+            # Tô miền diện tích khoá trong clip path
+            for sub_a, sub_b in res.intervals:
+                xs_sub = np.linspace(sub_a, sub_b, 120)
+                ys_sub_f = f_n(xs_sub)
+                ys_sub_g = g_n(xs_sub) if has_g else np.zeros_like(xs_sub)
+                
+                poly_fill = ax.fill_between(
+                    xs_sub, ys_sub_f, ys_sub_g,
+                    facecolor="#bfdbfe", edgecolor="#2563eb",
+                    hatch="///", linewidth=0.8, alpha=0.75, zorder=3
+                )
+                poly_fill.set_clip_path(grid_clip)
 
-            # Tô miền diện tích và khóa cứng trong lưới
-            poly_fill = ax.fill_between(
-                xs_core, yf_core, yg_core,
-                facecolor="#eff6ff",
-                edgecolor="#1d4ed8",
-                hatch="///",
-                linewidth=0.8,
-                alpha=0.85,
-                zorder=2
-            )
-            poly_fill.set_clip_path(grid_clip)
-
-            # 5. Vẽ hai đường cong và cắt trọn trong lưới (không tràn ra ngoài viền)
+            # Vẽ đồ thị khoá trong clip path
             xs_plot = np.linspace(x_view_min, x_view_max, 600)
-            ys_plot_f = f_n(xs_plot)
-            line_f, = ax.plot(xs_plot, ys_plot_f, color="#2563eb", linewidth=1.8, zorder=4)
+            line_f, = ax.plot(xs_plot, f_n(xs_plot), color="#2563eb", linewidth=1.8, zorder=4)
             line_f.set_clip_path(grid_clip)
 
-            # 1. Gắn nhãn (C): CỐ ĐỊNH Ở MÉP NGOÀI GÓC TRÊN BÊN PHẢI (Hoàn toàn không chạm đồ thị)
+            if has_g:
+                line_g, = ax.plot(xs_plot, g_n(xs_plot), color="#dc2626", linewidth=1.7, zorder=4)
+                line_g.set_clip_path(grid_clip)
+
+            # Nhãn (C) và (d)
             ax.text(
                 x_view_min + 0.3, y_view_max - 0.35,
                 rf"$(C): y = {sp.latex(f_expr)}$",
-                color="#1d4ed8", fontsize=11, weight="bold",
+                color="#2563eb", fontsize=11, weight="bold",
                 ha="left", va="top",
                 bbox=dict(boxstyle="round,pad=0.25", facecolor="#ffffff", edgecolor="#cbd5e1", linewidth=0.7, alpha=0.95),
                 zorder=7
             )
-
-            # 2. Gắn nhãn (d): CỐ ĐỊNH Ở MÉP NGOÀI GÓC DƯỚI BÊN TRÁI (Hoàn toàn không chạm đồ thị)
             if has_g:
-                ys_plot_g = g_n(xs_plot)
-                line_g, = ax.plot(xs_plot, ys_plot_g, color="#dc2626", linestyle="-", linewidth=1.7, zorder=4)
-                line_g.set_clip_path(grid_clip)
-
-                is_line = False
-                try:
-                    is_line = sp.Poly(g_expr, x_sym).degree() <= 1
-                except Exception:
-                    is_line = False
-                name_g = "(d)" if is_line else r"(C')"
-
                 ax.text(
                     x_view_min + 0.25, y_view_min + 0.35,
-                    rf"${name_g}: y = {sp.latex(g_expr)}$",
+                    rf"$(d): y = {sp.latex(g_expr)}$",
                     color="#dc2626", fontsize=11, weight="bold",
                     ha="left", va="bottom",
                     bbox=dict(boxstyle="round,pad=0.25", facecolor="#ffffff", edgecolor="#cbd5e1", linewidth=0.7, alpha=0.95),
                     zorder=7
                 )
 
-            # 6. Đường dóng vuông góc tại các cận
-            ax.plot([x_a, x_a], [0, f_n(x_a)], color="#1d4ed8", linestyle=":", linewidth=1.1, zorder=3)
-            ax.plot([x_b, x_b], [0, f_n(x_b)], color="#1d4ed8", linestyle=":", linewidth=1.1, zorder=3)
-            if has_g:
-                ax.plot([x_a, x_a], [0, g_n(x_a)], color="#dc2626", linestyle=":", linewidth=1.1, zorder=3)
-                ax.plot([x_b, x_b], [0, g_n(x_b)], color="#dc2626", linestyle=":", linewidth=1.1, zorder=3)
+            # Đường dóng vuông góc tại các cận a và b
+            ax.plot([x_a, x_a], [0, f_n(x_a)], color="#334155", linestyle=":", linewidth=1.1, zorder=3)
+            ax.plot([x_b, x_b], [0, f_n(x_b)], color="#334155", linestyle=":", linewidth=1.1, zorder=3)
 
         svg_buffer = io.StringIO()
         fig.savefig(svg_buffer, format="svg", bbox_inches="tight")
